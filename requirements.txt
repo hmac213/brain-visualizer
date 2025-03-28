@@ -1,0 +1,7 @@
+Flask
+Flask-Cors
+setuptools
+wheel
+numpy
+cython
+git+https://github.com/gallantlab/pycortex.git
