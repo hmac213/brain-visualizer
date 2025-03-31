@@ -3,12 +3,12 @@ from flask import Blueprint, send_from_directory
 import cortex
 import os
 
-viewer = Blueprint('viewer', __name__)
+viewer = Blueprint('viewer', __name__, url_prefix='/api')
 
 # path for static viewer files
 out_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../static_viewer'))
 
-@viewer.route('/api/viewer')
+@viewer.route('/viewer')
 def req_visualize_brain():
     lung_volume = cortex.Volume.random(subject='S1', xfmname='fullhead', priority=1)
     breast_volume = cortex.Volume.random(subject='S1', xfmname='fullhead', priority=1)
@@ -24,11 +24,11 @@ def req_visualize_brain():
         'Colorectal' : colorectal_volume
     }
 
-    cortex.webgl.make_static(outpath=out_path, data=volumes, recache=True, template='static_test.html')
+    cortex.webgl.make_static(outpath=out_path, data=volumes, recache=True, template='custom_viewer.html')
 
     return send_from_directory(out_path, 'index.html')
 
 # serve files associated with viewer
-@viewer.route('/api/<path:filedir>')
+@viewer.route('/<path:filedir>')
 def serve_static_viewer_assets(filedir):
     return send_from_directory(out_path, filedir)
