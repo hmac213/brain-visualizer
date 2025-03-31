@@ -20,7 +20,7 @@ export default function Viewer() {
         >
           <SlidersHorizontal color="#6e6e6e" />
         </button>
-        <Filter showFilter={filterShowing} toggleFilter={toggleFilter} />
+        <Filter showFilter={filterShowing} toggleFilter={toggleFilter}  />
       </div>
     </div>
   );

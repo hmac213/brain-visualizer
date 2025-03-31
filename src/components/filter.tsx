@@ -87,10 +87,6 @@ export default function Filter(props: FilterProps) {
     return initial;
   });
 
-  const itemsPerPage = 8;
-  const totalPages = Math.ceil(filters.length / itemsPerPage);
-  const visibleFilters = filters.slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage);
-
   const handleRadioChange = (index: number) => {
     const updatedFilters = filters.map((filter, i) => ({
       ...filter,
@@ -136,8 +132,7 @@ export default function Filter(props: FilterProps) {
   >
       {/* Outer container with margin 12 from parent's border */}
       <div
-        className='bg-white m-12 p-6 rounded-lg shadow-md flex flex-col overflow-hidden'
-        style={{ width: 'calc(100% - 12rem)', height: 'calc(100% - 12rem)' }}
+        className='bg-white px-100 py-24 flex flex-col h-full w-full overflow-hidden'
       >
         {/* Header with Title, New Filter button, and Close button */}
         <div className='flex justify-between items-center mb-4'>
@@ -157,74 +152,80 @@ export default function Filter(props: FilterProps) {
             </button>
           </div>
         </div>
-        {/* Paginated Filter List with scroll if too long */}
-        <div className='border border-gray-300 rounded overflow-hidden bg-gray-100'>
-          <div className='flex flex-col'>
-            {visibleFilters.map((filter, index) => {
-              const absoluteIndex = index + currentPage * itemsPerPage;
-              return (
-                <div key={absoluteIndex} onClick={() => handleRadioChange(absoluteIndex)} className='flex items-center p-3 cursor-pointer odd:bg-white even:bg-gray-100'>
-                  <input
-                    type='radio'
-                    name='activeFilter'
-                    checked={filter.active}
-                    onChange={() => handleRadioChange(absoluteIndex)}
-                    className='mr-3 h-5 w-5 accent-[#2774AE]'
-                  />
-                  <div className='flex-1'>
-                    <div className='font-semibold text-gray-800 text-base'>{filter.name}</div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditFilterModal(filter);
-                      setEditFilterName(filter.name);
-                      setEditFilterSelections(() => {
-                        const selections: { [key: string]: string[] } = {};
-                        Object.keys(data).forEach(category => {
-                          selections[category] = data[category].filter(option => filter.activeFilters.includes(option));
-                        });
-                        return selections;
-                      });
-                    }}
-                    className='px-2 py-1 mr-2 bg-white border border-gray-300 rounded-md hover:bg-gray-100'
+        {/* Filter List with scroll if too long */}
+        <div className='border border-gray-300 rounded-lg bg-gray-100 max-h-[80vh] overflow-y-auto'>
+          <table className='min-w-full divide-y divide-gray-200'>
+            <thead className='bg-gray-50'>
+              <tr>
+                <th className='w-1/10 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Active</th>
+                <th className='w-7/10 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Filter Name</th>
+                <th className='w-1/5 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider'>Actions</th>
+              </tr>
+            </thead>
+            <tbody className='bg-white divide-y divide-gray-200'>
+              {filters.map((filter, index) => {
+                return (
+                  <tr
+                    key={index}
+                    onClick={() => handleRadioChange(index)}
+                    className='cursor-pointer hover:bg-gray-50'
                   >
-                    Edit
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(absoluteIndex); }}
-                    className='px-2 py-1 mr-2 bg-white border border-gray-300 rounded-md hover:bg-gray-100'
-                  >
-                    Delete
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setModalFilter(filter); }}
-                    className='px-2 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors'
-                  >
-                    View
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Pagination Arrow Buttons with closer spacing */}
-        <div className='flex justify-center gap-2 mt-4'>
-          <button
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 0))}
-            disabled={currentPage === 0}
-            className={`p-2 ${currentPage === 0 ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:text-blue-800'}`}
-          >
-            <ChevronLeft />
-          </button>
-          <button
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages - 1))}
-            disabled={currentPage >= totalPages - 1}
-            className={`p-2 ${currentPage >= totalPages - 1 ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:text-blue-800'}`}
-          >
-            <ChevronRight />
-          </button>
+                    <td className='px-6 py-4 whitespace-nowrap'>
+                      <input
+                        type='radio'
+                        name='activeFilter'
+                        checked={filter.active}
+                        onChange={() => handleRadioChange(index)}
+                        className='h-5 w-5 accent-[#2774AE]'
+                      />
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap font-semibold text-gray-800'>
+                      {filter.name}
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap text-right'>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditFilterModal(filter);
+                          setEditFilterName(filter.name);
+                          setEditFilterSelections(() => {
+                            const selections: { [key: string]: string[] } = {};
+                            Object.keys(data).forEach(category => {
+                              selections[category] = data[category].filter(option =>
+                                filter.activeFilters.includes(option)
+                              );
+                            });
+                            return selections;
+                          });
+                        }}
+                        className='px-2 py-1 mr-2 bg-white border border-gray-300 rounded-md hover:bg-gray-100'
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(index);
+                        }}
+                        className='px-2 py-1 mr-2 bg-white border border-gray-300 rounded-md hover:bg-gray-100'
+                      >
+                        Delete
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setModalFilter(filter);
+                        }}
+                        className='px-2 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors'
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
