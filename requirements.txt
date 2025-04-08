@@ -1,3 +1,4 @@
+plotly
 Flask
 Flask-Cors
 setuptools

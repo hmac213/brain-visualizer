@@ -3,6 +3,7 @@
 
 {% block jsinit %}
     var viewer, subjects, datasets, figure, sock, viewopts;
+    var apiBaseUrl = 'http://localhost:5001'; // Adjust this to match your Flask backend URL
 {% end %}
 {% block onload %}
         viewopts = {{viewopts}};
@@ -16,11 +17,66 @@
 
         dataviews = dataset.fromJSON({{data}});
         viewer.addData(dataviews);
+        
+        // Setup brain click event handling
+        setupBrainClickHandler(viewer);
 {% end %}
 {% block extrahtml %}
   <script>
     document.addEventListener("DOMContentLoaded", function() {
       document.getElementById('figure_ui').style.display = 'none';
     });
+    
+    // Function to handle brain clicks and send data to API
+    function setupBrainClickHandler(viewer) {
+      var canvas = document.getElementById('brain');
+      
+      canvas.addEventListener('click', function(event) {
+        // Get mouse position relative to canvas
+        var rect = canvas.getBoundingClientRect();
+        var x = event.clientX - rect.left;
+        var y = event.clientY - rect.top;
+        
+        // Use the facepicker to get vertex information
+        if (viewer.picker && viewer.renderer) {
+          try {
+            // Get vertex information from the current scene
+            viewer.picker.draw(viewer.renderer, viewer.camera);
+            var pick = viewer.picker._pick(x, y, viewer.renderer.context);
+            
+            if (pick) {
+              console.log('Brain clicked:', pick);
+              
+              // Prepare the data to send to the API
+              var clickData = {
+                hemi: pick.hemi,
+                vertex: pick.ptidx,
+                coords: [pick.pos.x, pick.pos.y, pick.pos.z]
+              };
+              
+              // Send the data to our API endpoint
+              fetch(apiBaseUrl + '/api/brain-clicks', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify(clickData)
+              })
+              .then(response => response.json())
+              .then(data => {
+                console.log('Brain click stored:', data);
+              })
+              .catch(error => {
+                console.error('Error storing brain click:', error);
+              });
+            }
+          } catch (e) {
+            console.error('Error picking vertex:', e);
+          }
+        }
+      });
+    }
   </script>
 {% end %}

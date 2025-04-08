@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -51,7 +50,7 @@ interface FilterItem {
 }
 
 interface FilterProps {
-  showFilter: boolean;
+  filterShowing: boolean;
   toggleFilter: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
@@ -61,7 +60,6 @@ export default function Filter(props: FilterProps) {
 
   // Manage local state for filters and modals
   const [filters, setFilters] = useState<FilterItem[]>(initialFilters);
-  const [currentPage, setCurrentPage] = useState(0);
   // Modal for viewing a filter
   const [modalFilter, setModalFilter] = useState<FilterItem | null>(null);
   
@@ -124,13 +122,12 @@ export default function Filter(props: FilterProps) {
     });
   }, []);
 
-  return props.showFilter ? (
-  <div
-    className='absolute inset-0 flex justify-center items-center'
-    style={{ pointerEvents: 'auto' }}
-    onClick={(e) => { if(e.target === e.currentTarget) props.toggleFilter(false); }}
-  >
-      {/* Outer container with margin 12 from parent's border */}
+  return props.filterShowing ? (
+    <div
+      className='absolute inset-0 flex justify-center items-center'
+      style={{ pointerEvents: 'auto' }}
+      onClick={(e) => { if(e.target === e.currentTarget) props.toggleFilter(false); }}
+    >
       <div
         className='bg-white px-100 py-24 flex flex-col h-full w-full overflow-hidden'
       >

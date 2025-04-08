@@ -45,5 +45,5 @@ def delete_filter(id):
     if id in active_filters:
         del active_filters[id]
         return jsonify({ 'message': 'success: filter deleted' }), 200
-    else:
-        return jsonify({ 'error': 'error: filter not found' }), 404
+
+    return jsonify({ 'error': 'error: filter not found' }), 404
