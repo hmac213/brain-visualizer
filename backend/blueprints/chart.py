@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-import plotly.graph_objects as go
+from .chart_creators import chart_creation_map
 
 chart = Blueprint('chart', __name__, url_prefix='/api')
 
@@ -112,310 +112,6 @@ active_charts = {
 # Store brain location clicks
 brain_clicks = []
 
-# functions for creating different types of charts
-'''
-Request data format:
-{
-  "id": UUID,
-  "type": string,
-  "title": string | none,
-  "data": {
-    "xaxis_title": string | none,
-    "yaxis_title": string | none,
-    "series": [
-      {
-        "name": string | none,
-        "mode": string,
-        "trace": type-dependent data
-      },
-      ...
-    ]
-  }
-}
-'''
-def create_line_chart(data):
-    try:
-        series_list = data.get('series')
-        if not series_list or not isinstance(series_list, list):
-            raise ValueError('Invalid data.')
-        
-        traces = []
-
-        for series in series_list:
-            trace_data = series.get('trace')
-            if not trace_data or not isinstance(trace_data, dict):
-                raise ValueError('Invalid series entry.')
-            
-            traces.append(
-                go.Scatter(
-                    name = series.get('name', None),
-                    mode = 'lines', # update with customizable modes later
-                    line_color = '#2774AE',
-                    **trace_data
-                )
-            )
-        
-        layout = go.Layout(
-            title = data.get('title', None),
-            xaxis = dict(
-                title = data.get('xaxis_title', None),
-                linecolor = 'red'
-            ),
-            yaxis = dict(
-                title = data.get('yaxis_title', None),
-                linecolor = 'red'
-            ),
-            paper_bgcolor='white',
-            plot_bgcolor='white'
-        )
-
-        fig = go.Figure(data=traces, layout=layout)
-        return fig.to_dict()
-    except Exception as e:
-        return jsonify({ 'Error': str(e)}), 400
-
-def create_bar_chart(data):
-    try:
-        series_list = data.get('series')
-        if not series_list or not isinstance(series_list, list):
-            raise ValueError('Invalid data.')
-        
-        traces = []
-
-        for series in series_list:
-            trace_data = series.get('trace')
-            if not trace_data or not isinstance(trace_data, dict):
-                raise ValueError('Invalid series entry.')
-            
-            traces.append(
-                go.Bar(
-                    name = series.get('name', None),
-                    marker_color = '#2774AE',
-                    **trace_data
-                )
-            )
-        
-        layout = go.Layout(
-            barmode='stack', # update with customizable modes later
-            title = data.get('title', None),
-            xaxis = dict(
-                title = data.get('xaxis_title', None),
-                linecolor = 'red'
-            ),
-            yaxis = dict(
-                title = data.get('yaxis_title', None),
-                linecolor = 'red'
-            ),
-            paper_bgcolor='white',
-            plot_bgcolor='white'
-        )
-
-        fig = go.Figure(data=traces, layout=layout)
-        return fig.to_dict()
-    except Exception as e:
-        return jsonify({ 'Error': str(e)}), 400
-
-def create_histogram(data):
-    try:
-        series_list = data.get('series')
-        if not series_list or not isinstance(series_list, list):
-            raise ValueError('Invalid data.')
-        
-        traces = []
-
-        for series in series_list:
-            trace_data = series.get('trace')
-            if not trace_data or not isinstance(trace_data, dict):
-                raise ValueError('Invalid series entry.')
-            
-            traces.append(
-                go.Histogram(
-                    name = series.get('name', None),
-                    marker_color = '#2774AE',
-                    opacity = 0.75,
-                    **trace_data
-                )
-            )
-        
-        layout = go.Layout(
-            title = data.get('title', None),
-            xaxis = dict(
-                title = data.get('xaxis_title', None),
-                linecolor = 'red'
-            ),
-            yaxis = dict(
-                title = data.get('yaxis_title', None),
-                linecolor = 'red'
-            ),
-            barmode = 'overlay',  # Default to overlay for multiple histograms
-            paper_bgcolor = 'white',
-            plot_bgcolor = 'white'
-        )
-
-        fig = go.Figure(data=traces, layout=layout)
-        return fig.to_dict()
-    except Exception as e:
-        return jsonify({ 'Error': str(e)}), 400
-
-def create_box_plot(data):
-    try:
-        series_list = data.get('series')
-        if not series_list or not isinstance(series_list, list):
-            raise ValueError('Invalid data.')
-        
-        traces = []
-
-        for series in series_list:
-            trace_data = series.get('trace')
-            if not trace_data or not isinstance(trace_data, dict):
-                raise ValueError('Invalid series entry.')
-            
-            traces.append(
-                go.Box(
-                    name = series.get('name', None),
-                    marker_color = '#2774AE',
-                    boxmean = True,  # Show mean as a dashed line
-                    **trace_data
-                )
-            )
-        
-        layout = go.Layout(
-            title = data.get('title', None),
-            xaxis = dict(
-                title = data.get('xaxis_title', None),
-                linecolor = 'red'
-            ),
-            yaxis = dict(
-                title = data.get('yaxis_title', None),
-                linecolor = 'red'
-            ),
-            paper_bgcolor = 'white',
-            plot_bgcolor = 'white'
-        )
-
-        fig = go.Figure(data=traces, layout=layout)
-        return fig.to_dict()
-    except Exception as e:
-        return jsonify({ 'Error': str(e)}), 400
-
-def create_scatter_plot(data):
-    try:
-        series_list = data.get('series')
-        if not series_list or not isinstance(series_list, list):
-            raise ValueError('Invalid data.')
-        
-        traces = []
-
-        for series in series_list:
-            trace_data = series.get('trace')
-            if not trace_data or not isinstance(trace_data, dict):
-                raise ValueError('Invalid series entry.')
-            
-            traces.append(
-                go.Scatter(
-                    name = series.get('name', None),
-                    mode = 'markers', # Default to markers for scatter plot
-                    marker = dict(
-                        color = '#2774AE',
-                        size = 10
-                    ),
-                    **trace_data
-                )
-            )
-        
-        layout = go.Layout(
-            title = data.get('title', None),
-            xaxis = dict(
-                title = data.get('xaxis_title', None),
-                linecolor = 'red'
-            ),
-            yaxis = dict(
-                title = data.get('yaxis_title', None),
-                linecolor = 'red'
-            ),
-            paper_bgcolor='white',
-            plot_bgcolor='white'
-        )
-
-        fig = go.Figure(data=traces, layout=layout)
-        return fig.to_dict()
-    except Exception as e:
-        return jsonify({ 'Error': str(e)}), 400
-
-def create_bubble_chart(data):
-    try:
-        series_list = data.get('series')
-        if not series_list or not isinstance(series_list, list):
-            raise ValueError('Invalid data.')
-        
-        traces = []
-
-        for series in series_list:
-            trace_data = series.get('trace')
-            if not trace_data or not isinstance(trace_data, dict):
-                raise ValueError('Invalid series entry.')
-            
-            # For bubble charts, we expect a 'size' array in trace_data
-            marker_settings = {
-                'color': '#2774AE',
-                'opacity': 0.7,
-                'line': {
-                    'width': 1,
-                    'color': 'darkblue'
-                }
-            }
-            
-            # If size data is provided, use it
-            if 'size' in trace_data:
-                size_data = trace_data.pop('size')  # Remove from trace_data to avoid duplicate
-                marker_settings['size'] = size_data
-                
-                # Add sizemode and sizeref if not already provided
-                if 'sizemode' not in marker_settings:
-                    marker_settings['sizemode'] = 'area'
-                if 'sizeref' not in marker_settings and isinstance(size_data, list) and size_data:
-                    # Calculate a reasonable sizeref based on max size value
-                    # This helps normalize bubble sizes
-                    marker_settings['sizeref'] = 2.0 * max(size_data) / (40**2)
-            
-            traces.append(
-                go.Scatter(
-                    name = series.get('name', None),
-                    mode = 'markers',
-                    marker = marker_settings,
-                    **trace_data
-                )
-            )
-        
-        layout = go.Layout(
-            title = data.get('title', None),
-            xaxis = dict(
-                title = data.get('xaxis_title', None),
-                linecolor = 'red'
-            ),
-            yaxis = dict(
-                title = data.get('yaxis_title', None),
-                linecolor = 'red'
-            ),
-            paper_bgcolor = 'white',
-            plot_bgcolor = 'white'
-        )
-
-        fig = go.Figure(data=traces, layout=layout)
-        return fig.to_dict()
-    except Exception as e:
-        return jsonify({ 'Error': str(e)}), 400
-
-
-chart_creation_map = {
-    'line_chart': create_line_chart,
-    'bar_chart': create_bar_chart,
-    'histogram': create_histogram,
-    'box_plot': create_box_plot,
-    'scatter_plot': create_scatter_plot,
-    'bubble_chart': create_bubble_chart
-}
-
 # access all active charts
 @chart.route('/charts', methods=['GET'])
 def get_charts():
@@ -451,8 +147,18 @@ def create_chart():
     type = request.json.get('type')
     id = request.json.get('id')
     data = request.json.get('data')
+    title = request.json.get('title')
+    
+    # Store the chart definition
+    active_charts[id] = {
+        'type': type,
+        'title': title,
+        'data': data
+    }
+    
+    # Generate chart configuration using the appropriate creator function
     return_chart = chart_creation_map[type](data)
-    active_charts[id] = return_chart
+    
     return jsonify(return_chart)
 
 # modify chart
@@ -480,26 +186,10 @@ def modify_chart(id):
         if isinstance(modified_chart_config, tuple) and len(modified_chart_config) == 2 and isinstance(modified_chart_config[1], int):
             return modified_chart_config # Return the error response directly
 
-        # Update active_charts with the new config AND the original type/title/data structure
-        # Storing raw data allows re-generation if needed, but GET now returns config.
-        # Let's store both the config and the input structure for consistency.
-        active_charts[id] = {
-            'type': type,
-            'title': title,
-            'data': data,
-            # Maybe store the generated config too? Or rely on GET to generate?
-            # Let's stick to storing the input definition for now.
-            # Revert the previous change: We need the raw data definition to call create_* function
-        }
         # We need to update active_charts with the NEW definition, not the config
         active_charts[id] = {'type': type, 'title': title, 'data': data}
 
-        # Re-generate the config using the new data for the response
-        # (Or we could store the config in active_charts if preferred)
-        final_config = chart_creation_map[type](payload_with_title)
-        # We already checked for errors above, assume final_config is good here
-
-        return jsonify(final_config) # Return the newly generated config
+        return jsonify(modified_chart_config) # Return the newly generated config
     except Exception as e:
         print(f"Error modifying chart {id}: {str(e)}")
         return jsonify({'error': 'Failed to modify chart'}), 500

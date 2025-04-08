@@ -30,6 +30,17 @@ const chartTypes = [
   { id: 'bubble_chart', name: 'Bubble Chart' }
 ];
 
+// For series data in charts
+interface SeriesData {
+  name: string;
+  data: {
+    x: (string | number)[];
+    y: (string | number)[];
+    size: (string | number)[];
+    [key: string]: any; // Allow additional properties like x_raw, y_raw, etc.
+  };
+}
+
 export default function NewChartModal({ isOpen, onClose, onChartCreated }: NewChartModalProps) {
   const [filters, setFilters] = useState<FilterItem[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<string>('');
@@ -41,9 +52,16 @@ export default function NewChartModal({ isOpen, onClose, onChartCreated }: NewCh
   });
   
   // For series data in charts
-  const [seriesData, setSeriesData] = useState([{
+  const [seriesData, setSeriesData] = useState<SeriesData[]>([{
     name: 'Series 1',
-    data: { x: [], y: [], size: [] }
+    data: { 
+      x: [], 
+      y: [], 
+      size: [],
+      x_raw: '',
+      y_raw: '',
+      size_raw: ''
+    }
   }]);
   
   // Fetch filters on component mount
@@ -87,7 +105,7 @@ export default function NewChartModal({ isOpen, onClose, onChartCreated }: NewCh
       // Reset series data based on chart type
       const initialData = {
         name: 'Series 1',
-        data: { x: [], y: [], size: [] }
+        data: { x: [], y: [], size: [], x_raw: '', y_raw: '', size_raw: '' }
       };
       
       setSeriesData([initialData]);
@@ -104,14 +122,26 @@ export default function NewChartModal({ isOpen, onClose, onChartCreated }: NewCh
   };
   
   // Handle series data changes
-  const handleSeriesChange = (index: number, field: string, value: any) => {
+  const handleSeriesChange = (index: number, field: string, value: string) => {
     const updatedSeries = [...seriesData];
     if (field === 'name') {
       updatedSeries[index].name = value;
     } else if (field === 'x' || field === 'y' || field === 'size') {
-      updatedSeries[index].data[field] = value.split(',').map((item: string) => 
-        isNaN(Number(item.trim())) ? item.trim() : Number(item.trim())
-      );
+      // Store the raw input value to enable proper editing
+      const rawInputValue = value;
+      
+      // Only parse comma-separated values when we need to update the actual data
+      if (!rawInputValue.trim()) {
+        updatedSeries[index].data[field] = [];
+      } else {
+        updatedSeries[index].data[field] = rawInputValue.split(',')
+          .map((item: string) => item.trim())
+          .filter((item: string) => item !== '')
+          .map((item: string) => isNaN(Number(item)) ? item : Number(item));
+      }
+      
+      // Store the raw input in a separate property for easier editing
+      updatedSeries[index].data[`${field}_raw`] = rawInputValue;
     }
     setSeriesData(updatedSeries);
   };
@@ -120,7 +150,7 @@ export default function NewChartModal({ isOpen, onClose, onChartCreated }: NewCh
   const addSeries = () => {
     setSeriesData([...seriesData, {
       name: `Series ${seriesData.length + 1}`,
-      data: { x: [], y: [], size: [] }
+      data: { x: [], y: [], size: [], x_raw: '', y_raw: '', size_raw: '' }
     }]);
   };
   
@@ -141,7 +171,7 @@ export default function NewChartModal({ isOpen, onClose, onChartCreated }: NewCh
     });
     setSeriesData([{
       name: 'Series 1',
-      data: { x: [], y: [], size: [] }
+      data: { x: [], y: [], size: [], x_raw: '', y_raw: '', size_raw: '' }
     }]);
   };
   
@@ -344,7 +374,7 @@ export default function NewChartModal({ isOpen, onClose, onChartCreated }: NewCh
                     <label className='block text-xs text-gray-600 mb-1'>X Values (comma-separated)</label>
                     <input
                       type='text'
-                      value={series.data.x.join(', ')}
+                      value={series.data.x_raw || ''}
                       onChange={(e) => handleSeriesChange(index, 'x', e.target.value)}
                       className='w-full border border-gray-300 rounded p-2 text-sm'
                       placeholder='e.g. 10, 20, 30 or Jan, Feb, Mar'
@@ -355,7 +385,7 @@ export default function NewChartModal({ isOpen, onClose, onChartCreated }: NewCh
                     <label className='block text-xs text-gray-600 mb-1'>Y Values (comma-separated)</label>
                     <input
                       type='text'
-                      value={series.data.y.join(', ')}
+                      value={series.data.y_raw || ''}
                       onChange={(e) => handleSeriesChange(index, 'y', e.target.value)}
                       className='w-full border border-gray-300 rounded p-2 text-sm'
                       placeholder='e.g. 5, 15, 25'
@@ -367,7 +397,7 @@ export default function NewChartModal({ isOpen, onClose, onChartCreated }: NewCh
                       <label className='block text-xs text-gray-600 mb-1'>Size Values (comma-separated)</label>
                       <input
                         type='text'
-                        value={series.data.size.join(', ')}
+                        value={series.data.size_raw || ''}
                         onChange={(e) => handleSeriesChange(index, 'size', e.target.value)}
                         className='w-full border border-gray-300 rounded p-2 text-sm'
                         placeholder='e.g. 20, 40, 60'

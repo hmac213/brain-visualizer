@@ -24,11 +24,8 @@ export default function DataView(props: DataProps) {
     fetch(`${baseURL}/api/charts`, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      mode: 'cors',
-      credentials: 'same-origin'
+        'Accept': 'application/json'
+      }
     })
     .then(response => {
         if (!response.ok) {
