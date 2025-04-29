@@ -1,8 +1,5 @@
 from flask import Flask
 from flask_cors import CORS
-from backend.blueprints.viewer import viewer
-from backend.blueprints.filters import filters
-from backend.blueprints.chart import chart
 
 app = Flask(__name__)
 CORS(app)
@@ -11,6 +8,16 @@ CORS(app)
 def home():
     return { "message" : "Flask backend is running!" }
 
+app.config['CURRENT_FILTER'] = {
+    'default_id': {
+        'name': 'Default',
+        'options': []
+    }
+}
+
+from backend.blueprints.viewer import viewer
+from backend.blueprints.filters import filters
+from backend.blueprints.chart import chart
 app.register_blueprint(viewer)
 app.register_blueprint(filters)
 app.register_blueprint(chart)

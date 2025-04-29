@@ -1,6 +1,20 @@
+import sys
+import os
 import numpy as np
 import nibabel as nib
 import scipy.ndimage as ndimage
+
+# Check if a filename argument is provided
+if len(sys.argv) < 2:
+    print("Usage: python create_test_nifti.py <output_filename>")
+    sys.exit(1)
+
+output_filepath = sys.argv[1]
+
+# Ensure the output directory exists
+output_dir = os.path.dirname(output_filepath)
+if output_dir and not os.path.exists(output_dir):
+    os.makedirs(output_dir)
 
 # 1. Build a random heatmap-like 3D array by smoothing noise
 shape = (31, 100, 100)
@@ -15,6 +29,6 @@ affine = np.diag([1, 1, 1, 1])
 
 # 3. Wrap in a NIfTI image and save as compressed .nii.gz
 img = nib.Nifti1Image(data, affine)
-nib.save(img, 'backend/compressed_nifti_files/test.nii.gz')
+nib.save(img, output_filepath) # Use the provided filepath
 
-print("Wrote synthetic volume to test.nii.gz")
+print(f"Wrote synthetic volume to {output_filepath}")

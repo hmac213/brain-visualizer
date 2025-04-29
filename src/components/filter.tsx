@@ -52,6 +52,8 @@ interface FilterItem {
 interface FilterProps {
   filterShowing: boolean;
   toggleFilter: React.Dispatch<React.SetStateAction<boolean>>;
+  activeFilterId: string | null;
+  onFilterChange: (filterId: string) => void;
 }
 
 export default function Filter(props: FilterProps) {
@@ -86,6 +88,11 @@ export default function Filter(props: FilterProps) {
   });
 
   const handleRadioChange = (index: number) => {
+    const selectedFilter = filters[index];
+    if (selectedFilter && selectedFilter.id !== props.activeFilterId) {
+      props.onFilterChange(selectedFilter.id);
+    }
+
     const updatedFilters = filters.map((filter, i) => ({
       ...filter,
       active: i === index
@@ -163,7 +170,7 @@ export default function Filter(props: FilterProps) {
               {filters.map((filter, index) => {
                 return (
                   <tr
-                    key={index}
+                    key={filter.id}
                     onClick={() => handleRadioChange(index)}
                     className='cursor-pointer hover:bg-gray-50'
                   >
@@ -171,7 +178,7 @@ export default function Filter(props: FilterProps) {
                       <input
                         type='radio'
                         name='activeFilter'
-                        checked={filter.active}
+                        checked={filter.id === props.activeFilterId}
                         onChange={() => handleRadioChange(index)}
                         className='h-5 w-5 accent-[#2774AE]'
                       />
