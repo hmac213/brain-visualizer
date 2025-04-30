@@ -114,20 +114,24 @@ export default function Filter(props: FilterProps) {
     })
     .then(response => response.json())
     .then(data => {
-      Object.keys(data).forEach((id) => {
-        const curFilter: FilterItem = {
+      const fetchedFilters: FilterItem[] = Object.keys(data).map((id) => {
+        return {
           id: id,
           name: data[id].name,
-          active: (id === 'default_id') ? true : false,
+          active: id === props.activeFilterId, // Use activeFilterId from props
           activeFilters: data[id].options
-        }
-        setFilters(prev => [...prev, curFilter]);
-      })
+        };
+      });
+      // Set the entire list at once, replacing the initial empty array
+      setFilters(fetchedFilters);
     })
     .catch(error => {
       console.error('Error fetching filters:', error);
     });
-  }, []);
+  // Add props.activeFilterId to dependency array if you want it to refetch
+  // when the active filter changes externally, but be cautious of loops.
+  // For now, keeping it empty to fetch only on mount.
+  }, [props.activeFilterId]); // Depend on activeFilterId to correctly set initial active state
 
   return props.filterShowing ? (
     <div

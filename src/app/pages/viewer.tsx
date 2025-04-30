@@ -10,6 +10,7 @@ export default function Viewer() {
   const [dataShowing, toggleData] = useState(false);
   const [activeFilterId, setActiveFilterId] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [activeViewType, setActiveViewType] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`${baseURL}/api/filters/get_current`)
@@ -65,13 +66,23 @@ export default function Viewer() {
     }
   };
 
+  useEffect(() => {
+    setActiveViewType('2d');
+  }, []);
+
   return (
     <div style={{ display: 'grid', width: '100vw', height: '100vh', overflow: 'hidden' }}>
       <iframe
         ref={iframeRef}
         src={`${baseURL}/api/viewer`}
-        style={{ gridArea: '1 / 1 / 2 / 2', width: '100%', height: '100%', border: 'none', zIndex: 0, marginTop: '64px' }}
-        title="Pycortex WebGL Viewer"
+        style={{ gridArea: '1 / 1 / 2 / 2', width: '100%', height: '100%', border: 'none', zIndex: 0, marginTop: '64px', display: activeViewType === '2d' ? 'block' : 'none' }}
+        title="Pycortex WebGL Viewer - 2D"
+      />
+      <iframe
+        ref={iframeRef}
+        src={`${baseURL}/api/viewer`}
+        style={{ gridArea: '1 / 1 / 2 / 2', width: '100%', height: '100%', border: 'none', zIndex: 0, marginTop: '64px', display: activeViewType === '3d' ? 'block' : 'none' }}
+        title="Pycortex WebGL Viewer - 3D"
       />
       <div style={{ gridArea: '1 / 1 / 2 / 2', width: '100%', height: '100%', border: 'none', zIndex: 10, pointerEvents: 'none' }}>
         {!filterShowing && !dataShowing && (
@@ -97,6 +108,29 @@ export default function Viewer() {
             </div>
           </div>
         )}
+
+        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 flex flex-col gap-2 p-2 bg-white rounded-r-lg shadow-md" style={{ pointerEvents: 'auto' }}>
+          <button 
+            onClick={() => setActiveViewType('2d')} 
+            className={`px-3 py-1 text-sm font-medium transition-colors ${
+              activeViewType === '2d' 
+                ? 'bg-[#2774AE] text-white rounded-md' 
+                : 'bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400'
+            }`}
+          >
+            2D View
+          </button>
+          <button 
+            onClick={() => setActiveViewType('3d')} 
+            className={`px-3 py-1 text-sm font-medium transition-colors ${
+              activeViewType === '3d' 
+                ? 'bg-[#2774AE] text-white rounded-md' 
+                : 'bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400'
+            }`}
+          >
+            3D View
+          </button>
+        </div>
         
         <Filter 
           filterShowing={filterShowing} 
