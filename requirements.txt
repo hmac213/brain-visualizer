@@ -8,3 +8,5 @@ cython
 nibabel
 scipy
 git+https://github.com/gallantlab/pycortex.git
+skimage
+templateflow
