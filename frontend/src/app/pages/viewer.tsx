@@ -11,7 +11,7 @@ export default function Viewer() {
   const [dataShowing, toggleData] = useState(false);
   const [activeFilterId, setActiveFilterId] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [activeViewType, setActiveViewType] = useState<string>('2d');
+  const [activeViewType, setActiveViewType] = useState<string>('surface');
 
   useEffect(() => {
     fetch(`${baseURL}/api/filters/get_current`)
@@ -55,7 +55,7 @@ export default function Viewer() {
         const result = await response.json();
         console.log("Backend update successful:", result.message);
 
-        if ((activeViewType === '2d' || activeViewType === '3d') && iframeRef.current) {
+        if ((activeViewType === 'surface') && iframeRef.current) {
             console.log("Reloading iframe for new filter...");
             iframeRef.current.contentWindow?.location.reload();
         }
@@ -78,7 +78,7 @@ export default function Viewer() {
             border: 'none',
             zIndex: 0,
             marginTop: '64px',
-            display: activeViewType === '2d' || activeViewType === '3d' ? 'block' : 'none'
+            display: activeViewType === 'surface' ? 'block' : 'none'
         }}
         title={`Pycortex WebGL Viewer`}
        />
@@ -116,24 +116,14 @@ export default function Viewer() {
 
         <div className="absolute left-0 top-1/2 transform -translate-y-1/2 flex flex-col gap-2 p-2 bg-white rounded-r-lg shadow-md" style={{ pointerEvents: 'auto' }}>
            <button
-            onClick={() => setActiveViewType('2d')}
+            onClick={() => setActiveViewType('surface')}
             className={`px-3 py-1 text-sm font-medium transition-colors ${
-              activeViewType === '2d'
+              activeViewType === 'surface'
                 ? 'bg-[#2774AE] text-white rounded-md'
                 : 'bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400'
             }`}
            >
-             2D View
-           </button>
-           <button
-            onClick={() => setActiveViewType('3d')}
-            className={`px-3 py-1 text-sm font-medium transition-colors ${
-              activeViewType === '3d'
-                ? 'bg-[#2774AE] text-white rounded-md'
-                : 'bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400'
-            }`}
-           >
-             3D View
+             Surface View
            </button>
            <button
               onClick={() => setActiveViewType('glass')}

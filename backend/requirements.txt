@@ -10,3 +10,4 @@ scipy
 git+https://github.com/gallantlab/pycortex.git
 skimage
 templateflow
+scipy # For interpolation
