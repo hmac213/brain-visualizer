@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { SlidersHorizontal, ChartColumn } from 'lucide-react'
 import Filter from '@/components/filter';
 import DataView from '@/components/data_views';
+import GlassBrainViewer from '@/components/GlassBrainViewer';
 
 const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -10,6 +11,7 @@ export default function Viewer() {
   const [dataShowing, toggleData] = useState(false);
   const [activeFilterId, setActiveFilterId] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [activeViewType, setActiveViewType] = useState<string>('surface');
 
   useEffect(() => {
     fetch(`${baseURL}/api/filters/get_current`)
@@ -20,13 +22,11 @@ export default function Viewer() {
           setActiveFilterId(initialId);
           console.log("Initial active filter ID set:", initialId);
         } else {
-          setActiveFilterId('default_id');
-          console.log("No initial filter found, defaulting to 'default_id'.");
+          console.log("No initial filter found.");
         }
       })
       .catch(error => {
         console.error('Error fetching initial current filter:', error);
-        setActiveFilterId('default_id');
       });
   }, []);
 
@@ -55,9 +55,9 @@ export default function Viewer() {
         const result = await response.json();
         console.log("Backend update successful:", result.message);
 
-        if (iframeRef.current) {
-            console.log("Reloading iframe...");
-            iframeRef.current.src = iframeRef.current.src;
+        if ((activeViewType === 'surface') && iframeRef.current) {
+            console.log("Reloading iframe for new filter...");
+            iframeRef.current.contentWindow?.location.reload();
         }
 
     } catch (error) {
@@ -69,10 +69,26 @@ export default function Viewer() {
     <div style={{ display: 'grid', width: '100vw', height: '100vh', overflow: 'hidden' }}>
       <iframe
         ref={iframeRef}
+        key={activeFilterId}
         src={`${baseURL}/api/viewer`}
-        style={{ gridArea: '1 / 1 / 2 / 2', width: '100%', height: '100%', border: 'none', zIndex: 0, marginTop: '64px' }}
-        title="Pycortex WebGL Viewer"
-      />
+        style={{
+            gridArea: '1 / 1 / 2 / 2',
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            zIndex: 0,
+            marginTop: '64px',
+            display: activeViewType === 'surface' ? 'block' : 'none'
+        }}
+        title={`Pycortex WebGL Viewer`}
+       />
+
+      {activeViewType === 'glass' && (
+          <div style={{ gridArea: '1 / 1 / 2 / 2', width: '100%', height: 'calc(100% - 64px)', marginTop: '64px', zIndex: 0 }}>
+              <GlassBrainViewer />
+          </div>
+      )}
+
       <div style={{ gridArea: '1 / 1 / 2 / 2', width: '100%', height: '100%', border: 'none', zIndex: 10, pointerEvents: 'none' }}>
         {!filterShowing && !dataShowing && (
           <div className="fixed inset-x-0 top-0 z-20 flex h-16 w-full items-center justify-between bg-white" style={{ pointerEvents: 'auto' }}>
@@ -97,10 +113,33 @@ export default function Viewer() {
             </div>
           </div>
         )}
-        
-        <Filter 
-          filterShowing={filterShowing} 
-          toggleFilter={toggleFilter} 
+
+        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 flex flex-col gap-2 p-2 bg-white rounded-r-lg shadow-md" style={{ pointerEvents: 'auto' }}>
+           <button
+            onClick={() => setActiveViewType('surface')}
+            className={`px-3 py-1 text-sm font-medium transition-colors ${
+              activeViewType === 'surface'
+                ? 'bg-[#2774AE] text-white rounded-md'
+                : 'bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400'
+            }`}
+           >
+             Surface View
+           </button>
+           <button
+              onClick={() => setActiveViewType('glass')}
+              className={`px-3 py-1 text-sm font-medium transition-colors ${
+                activeViewType === 'glass'
+                  ? 'bg-[#2774AE] text-white rounded-md'
+                  : 'bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400'
+              }`}
+            >
+              Glass Brain
+            </button>
+         </div>
+
+        <Filter
+          filterShowing={filterShowing}
+          toggleFilter={toggleFilter}
           activeFilterId={activeFilterId}
           onFilterChange={handleFilterChange}
         />

@@ -1,0 +1,13 @@
+plotly
+Flask
+Flask-Cors
+setuptools
+wheel
+numpy
+cython
+nibabel
+scipy
+git+https://github.com/gallantlab/pycortex.git
+skimage
+templateflow
+scipy # For interpolation
