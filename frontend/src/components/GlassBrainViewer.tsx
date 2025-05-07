@@ -4,7 +4,8 @@ import { OrbitControls, useProgress, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import VolumeRenderer from './VolumeRenderer'; // Import the new component
 
-const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
+// Remove the baseURL since we're using the proxy
+// const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 function Loader() {
   const { progress } = useProgress();

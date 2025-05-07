@@ -3,7 +3,8 @@ import Chart from './chart';
 import { LayoutGrid, StretchHorizontal } from 'lucide-react'
 import NewChartModal from './NewChartModal';
 
-const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
+// Remove the baseURL since we're using the proxy
+// const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 interface PlotlyConfig {
   data: any;
@@ -21,7 +22,7 @@ export default function DataView(props: DataProps) {
   const [newChartModal, setNewChartModal] = useState(false);
 
   useEffect(() => {
-    fetch(`${baseURL}/api/charts`, {
+    fetch('/api/charts', {
       method: 'GET',
       headers: {
         'Accept': 'application/json'

@@ -3,7 +3,7 @@
 
 {% block jsinit %}
     var viewer, subjects, datasets, figure, sock, viewopts;
-    var apiBaseUrl = 'http://localhost:5001'; // Adjust this to match your Flask backend URL
+    var apiBaseUrl = 'http://backend:5001'; // Adjust this to match your Flask backend URL
 {% end %}
 {% block onload %}
         viewopts = {{viewopts}};

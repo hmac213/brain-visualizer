@@ -17,10 +17,10 @@ app.config['CURRENT_FILTER'] = {
     }
 }
 
-from backend.blueprints.viewer import viewer
-from backend.blueprints.filters import filters
-from backend.blueprints.chart import chart
-from backend.blueprints.glass_brain import glass_brain_bp
+from blueprints.viewer import viewer
+from blueprints.filters import filters
+from blueprints.chart import chart
+from blueprints.glass_brain import glass_brain_bp
 
 app.register_blueprint(viewer)
 app.register_blueprint(filters)

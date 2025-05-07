@@ -1,10 +1,10 @@
+'use client';
+
 import React, { useState, useEffect, useRef } from 'react';
 import { SlidersHorizontal, ChartColumn } from 'lucide-react'
 import Filter from '@/components/filter';
 import DataView from '@/components/data_views';
 import GlassBrainViewer from '@/components/GlassBrainViewer';
-
-const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function Viewer() {
   const [filterShowing, toggleFilter] = useState(false);
@@ -14,7 +14,7 @@ export default function Viewer() {
   const [activeViewType, setActiveViewType] = useState<string>('surface');
 
   useEffect(() => {
-    fetch(`${baseURL}/api/filters/get_current`)
+    fetch(`/api/filters/get_current`)
       .then(response => response.json())
       .then(data => {
         if (data && Object.keys(data).length > 0) {
@@ -40,7 +40,7 @@ export default function Viewer() {
     setActiveFilterId(newFilterId);
 
     try {
-        const response = await fetch(`${baseURL}/api/filters/set_current/${newFilterId}`, {
+        const response = await fetch(`/api/filters/set_current/${newFilterId}`, {
             method: 'PUT',
             headers: {
                 'Accept': 'application/json'
@@ -70,7 +70,7 @@ export default function Viewer() {
       <iframe
         ref={iframeRef}
         key={activeFilterId}
-        src={`${baseURL}/api/viewer`}
+        src='/api/viewer'
         style={{
             gridArea: '1 / 1 / 2 / 2',
             width: '100%',
@@ -147,4 +147,4 @@ export default function Viewer() {
       </div>
     </div>
   );
-}
+} 

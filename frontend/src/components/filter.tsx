@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
-const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
+// Remove the baseURL since we're using the proxy
+// const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 // sample filter categories (replace later with real categories)
 const data: Record<string, string[]> = {
@@ -106,7 +107,7 @@ export default function Filter(props: FilterProps) {
 
   // fetch initial filters from the api
   useEffect(() => {
-    fetch(`${baseURL}/api/filters`, {
+    fetch('/api/filters', {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
@@ -118,20 +119,16 @@ export default function Filter(props: FilterProps) {
         return {
           id: id,
           name: data[id].name,
-          active: id === props.activeFilterId, // Use activeFilterId from props
+          active: id === props.activeFilterId,
           activeFilters: data[id].options
         };
       });
-      // Set the entire list at once, replacing the initial empty array
       setFilters(fetchedFilters);
     })
     .catch(error => {
       console.error('Error fetching filters:', error);
     });
-  // Add props.activeFilterId to dependency array if you want it to refetch
-  // when the active filter changes externally, but be cautious of loops.
-  // For now, keeping it empty to fetch only on mount.
-  }, [props.activeFilterId]); // Depend on activeFilterId to correctly set initial active state
+  }, [props.activeFilterId]);
 
   return props.filterShowing ? (
     <div
@@ -140,7 +137,7 @@ export default function Filter(props: FilterProps) {
       onClick={(e) => { if(e.target === e.currentTarget) props.toggleFilter(false); }}
     >
       <div
-        className='bg-white px-100 py-24 flex flex-col h-full w-full overflow-hidden'
+        className='bg-white px-96 py-24 flex flex-col h-full w-full overflow-hidden'
       >
         {/* Header with Title, New Filter button, and Close button */}
         <div className='flex justify-between items-center mb-4'>
@@ -165,9 +162,9 @@ export default function Filter(props: FilterProps) {
           <table className='min-w-full divide-y divide-gray-200'>
             <thead className='bg-gray-50'>
               <tr>
-                <th className='w-1/10 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Active</th>
-                <th className='w-7/10 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Filter Name</th>
-                <th className='w-1/5 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider'>Actions</th>
+                <th className='w-[10%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Active</th>
+                <th className='w-[70%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Filter Name</th>
+                <th className='w-[20%] px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider'>Actions</th>
               </tr>
             </thead>
             <tbody className='bg-white divide-y divide-gray-200'>
@@ -328,7 +325,7 @@ export default function Filter(props: FilterProps) {
                     }
 
                     // create a new filter within the backend
-                    fetch(`${baseURL}/api/filters`, {
+                    fetch('/api/filters', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',

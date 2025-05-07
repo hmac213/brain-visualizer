@@ -1,6 +1,6 @@
 from flask import current_app
-from backend.patches import template_patch
-from backend.file_loading.nifti_loading import load_nifti
+from patches import template_patch
+from file_loading.nifti_loading import load_nifti
 from flask import Blueprint, send_from_directory
 import cortex
 import os
@@ -16,7 +16,13 @@ def req_visualize_brain():
     current_nii_name = ''
     for id in current_filter:
         current_nii_name = id
-    current_nii = load_nifti(f'backend/compressed_nifti_files/filter_{current_nii_name}.nii.gz')
+    # Construct path relative to the app's root path
+    nifti_file_path = os.path.join(
+        current_app.root_path, 
+        'compressed_nifti_files', 
+        f'filter_{current_nii_name}.nii.gz'
+    )
+    current_nii = load_nifti(nifti_file_path)
     current_nii_volume_data = current_nii[0]
     current_nii_volume = cortex.Volume(current_nii_volume_data, subject='S1', xfmname='fullhead')
 

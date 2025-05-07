@@ -8,6 +8,6 @@ cython
 nibabel
 scipy
 git+https://github.com/gallantlab/pycortex.git
-skimage
+scikit-image
 templateflow
 scipy # For interpolation
