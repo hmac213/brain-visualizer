@@ -23,10 +23,8 @@ A full‑stack application for visualizing synthetic brain tumor data. This proj
    * [3. Populate Sample Data](#3-populate-sample-data)
    * [4. Generate Synthetic NIfTI Files](#4-generate-synthetic-nifti-files)
    * [5. Launch the Full Stack](#5-launch-the-full-stack)
-4. [Project Structure](#project-structure)
 5. [Scripts](#scripts)
 6. [Troubleshooting](#troubleshooting)
-7. [License](#license)
 
 ---
 
@@ -47,21 +45,41 @@ git clone <repository-url> brain-visualizer
 cd brain-visualizer
 ```
 
-### Environment Variables
+### Install Requirements
 
-Copy and configure environment variables for both backend and frontend:
+If you plan on accessing the database or running the application from your local machine, ensure to install the necessary requirements:
 
 ```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+cd backend
+pip install -r requirements.txt
 ```
+and
+```bash
+cd frontend
+npm install
+```
+We also recommend you configure a virtual environment of your choice in the backend folder. This project was developed using venv:
+```bash
+cd backend
+python3 -m venv <venv_name>
+```
+for creation and
+```bash
+cd backend
+source <venv_name>/bin/activate
+```
+for activation (on Mac).
 
-Fill in any overrides. Key variables include:
+### Environment Variables
 
+Create `.env` files in both the frontend and backend folders, including the following:
+
+Backend:
 * `DATABASE_URL` (e.g. `postgresql://myuser:mypassword@db:5432/brain_dev`)
-* `NEXT_PUBLIC_API_URL` (e.g. `http://localhost:5001/api`)
+> **Note**: replace 'db' with 'localhost' if you plan on accessing the database from your own terminal. The URL for the docker environment is configured in `docker-compse.yml`
 
-*(The Docker Compose defaults match these values if you don’t override.)*
+Frontend:
+* `NEXT_PUBLIC_API_URL` (e.g. `http://localhost:5001`)
 
 ---
 
@@ -97,7 +115,7 @@ Apply Alembic migrations to create the schema in `brain_dev`:
 docker-compose exec db bash -c "alembic upgrade head"
 ```
 
-(This will apply your `migrations/versions/6644350424c3_initial_migration.py` and any others.)
+(This will populate the database with the necessary table and rows.)
 
 ### 3. Populate Sample Data
 
