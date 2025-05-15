@@ -11,12 +11,13 @@ A full‑stack application for visualizing synthetic brain tumor data. This proj
 
 ## Table of Contents
 
-1. [Prerequisites](#prerequisites)
-2. [Getting Started](#getting-started)
+1. [TODO][#todo]
+2. [Prerequisites](#prerequisites)
+3. [Getting Started](#getting-started)
 
    * [Clone the Repo](#clone-the-repo)
    * [Environment Variables](#environment-variables)
-3. [Docker Compose Setup](#docker-compose-setup)
+4. [Docker Compose Setup](#docker-compose-setup)
 
    * [1. Start the Database](#1-start-the-database)
    * [2. Run Migrations](#2-run-migrations)
@@ -25,6 +26,23 @@ A full‑stack application for visualizing synthetic brain tumor data. This proj
    * [5. Launch the Full Stack](#5-launch-the-full-stack)
 5. [Scripts](#scripts)
 6. [Troubleshooting](#troubleshooting)
+
+---
+
+## Todo
+- [x] Migrate codebase to run on Docker for more robust development
+  - [x] Change file structure
+  - [x] Create Postgres image + table
+  - [x] Migrate filestore to bind mounts
+- [x] implement filtered pycortex render logic
+  - [x] Update render logic to use filestore
+  - [x] Create filter aggregation + database query scripts
+- [ ] Implement data visualizations from clicked location
+  - [ ] Pivot from nifti filestore to database storage
+    - [ ] Find solution for storing voxel data in entries efficiently (allows for faster location pinpointing)
+    - [ ] modify filter aggregation scripts to use this format
+  - [ ] create additional table or modify current table to hold extra data for graph data visualizations
+  - [ ] Add support for more visualization types
 
 ---
 
