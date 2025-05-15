@@ -132,7 +132,8 @@ export default function Viewer() {
           </div>
         )}
 
-        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 flex flex-col gap-2 p-2 bg-white rounded-r-lg shadow-md" style={{ pointerEvents: 'auto' }}>
+        {/* View mode selector buttons - change from hidden to flex when reimplemented */}
+        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 hidden flex-col gap-2 p-2 bg-white rounded-r-lg shadow-md" style={{ pointerEvents: 'auto' }}>
            <button
             onClick={() => setActiveViewType('surface')}
             className={`px-3 py-1 text-sm font-medium transition-colors ${
