@@ -27,8 +27,8 @@ services:
       - "5001:5001"
     volumes:
       - ./frontend/src/app/custom_templates:/app/custom_templates
-      - nifti_filestore:./filestore/test_db_nifti
-      - nifti_display_cache:./filestore/nifti_display_cache
+      - ./filestore/test_db_nifti:/app/filestore/test_db_nifti
+      - ./filestore/nifti_display_cache:/app/filestore/nifti_display_cache
     networks:
       - app-network
 
@@ -54,5 +54,3 @@ volumes:
   frontend_node_modules:
   frontend_next_cache:
   db_data:
-  nifti_filestore:
-  nifti_display_cache:

@@ -11,9 +11,9 @@ from app import app, db
 from models import SampleData
 from db_loading.get_db_filter_ids import gen_display_nifti
 
-# Directory paths
-INPUT_DIR = '../filestore/test_db_nifti'
-OUT_DIR = '../filestore/nifti_display_cache'
+# Directory paths for Docker volumes - relative to the /app working directory
+INPUT_DIR = '/app/filestore/test_db_nifti'
+OUT_DIR = '/app/filestore/nifti_display_cache'
 
 def generate_display_nifti(filter_id, options):
     """
@@ -92,3 +92,77 @@ def generate_display_nifti(filter_id, options):
     
     print(f"Created display NIfTI at {out_path} from {num_volumes} matching volumes")
     return out_path
+
+# Test the function when run directly
+if __name__ == "__main__":
+    print("Testing generate_display_nifti function")
+    
+    # Create a small test case to check paths and logic
+    os.makedirs(INPUT_DIR, exist_ok=True)
+    os.makedirs(OUT_DIR, exist_ok=True)
+    
+    # Check if sample files exist
+    nifti_files = [f for f in os.listdir(INPUT_DIR) if f.endswith('.nii.gz')]
+    print(f"Found {len(nifti_files)} NIfTI files in {INPUT_DIR}")
+    
+    if nifti_files:
+        print("Running a test with filter options:")
+        
+        # Generate a test filter ID
+        test_filter_id = str(uuid.uuid4())
+        print(f"Filter ID: {test_filter_id}")
+        
+        # Test with Lung cancer and small tumors
+        test_options = ["Lung", "Small (<1cm)"]
+        print(f"Filter options: {test_options}")
+        
+        # Run the function
+        output_path = generate_display_nifti(test_filter_id, test_options)
+        
+        if output_path:
+            print(f"Test successful! Output NIfTI created at {output_path}")
+            
+            # Verify the file exists
+            if os.path.exists(output_path):
+                file_size_mb = os.path.getsize(output_path) / (1024 * 1024)
+                print(f"File size: {file_size_mb:.2f} MB")
+            else:
+                print("Error: Output file was not created")
+        else:
+            print("Test failed: No output file was generated")
+    else:
+        print("Cannot run full test - no NIfTI files found")
+    
+    print("Testing complete")
+    
+    # Generate a default aggregate NIfTI file with all entries
+    print("\n=== Generating Default Aggregate NIfTI ===")
+    with app.app_context():
+        # Use empty list to get all entries (no filters)
+        default_filter_id = 'default_id'
+        default_options = []
+        
+        # Remove existing file if it exists to force regeneration
+        default_output_path = os.path.join(OUT_DIR, f"{default_filter_id}.nii.gz")
+        if os.path.exists(default_output_path):
+            os.remove(default_output_path)
+            print(f"Removed existing default NIfTI at {default_output_path}")
+        
+        # Generate the aggregate NIfTI
+        result_path = generate_display_nifti(default_filter_id, default_options)
+        
+        if result_path:
+            print(f"Successfully created default aggregate NIfTI at {result_path}")
+            
+            # Also copy to the location expected by the viewer blueprint
+            compressed_nifti_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'compressed_nifti_files')
+            os.makedirs(compressed_nifti_dir, exist_ok=True)
+            
+            viewer_path = os.path.join(compressed_nifti_dir, f"filter_{default_filter_id}.nii.gz")
+            
+            # Use shutil to copy file
+            import shutil
+            shutil.copy2(result_path, viewer_path)
+            print(f"Copied to viewer location: {viewer_path}")
+        else:
+            print("Failed to create default aggregate NIfTI")

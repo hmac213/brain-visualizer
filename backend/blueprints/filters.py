@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, current_app
-import subprocess
 import os
 import sys
+from db_loading.generate_display_nifti import generate_display_nifti
 
 filters = Blueprint('filters', __name__, url_prefix='/api')
 
@@ -30,38 +30,21 @@ def create_filter():
 
     active_filters[id] = { 'name': name, 'options': options }
     
-    # Generate the NIfTI file
+    # Generate the NIfTI file using the generate_display_nifti function
     try:
-        # Sanitize the name to create a valid filename
-        safe_filename = f"filter_{id}"
-            
-        nifti_filename = f"{safe_filename}.nii.gz"
-        nifti_filepath = os.path.join('backend', 'compressed_nifti_files', nifti_filename)
+        # Call the generate_display_nifti function with the filter ID and options
+        result_path = generate_display_nifti(id, options)
         
-        # Ensure the target directory exists
-        nifti_dir = os.path.dirname(nifti_filepath)
-        if not os.path.exists(nifti_dir):
-            os.makedirs(nifti_dir)
+        if result_path:
+            print(f"Successfully created NIfTI file at {result_path}")
+            # Store the path in the filter data for reference
+            active_filters[id]['nifti_path'] = result_path
+        else:
+            print(f"Failed to create NIfTI file for filter {id}")
             
-        script_path = os.path.join('backend', 'file_loading', 'create_test_nifti.py')
-        
-        # Use sys.executable to ensure the correct python interpreter is used
-        python_executable = sys.executable if sys.executable else 'python' # Fallback to 'python'
-        
-        result = subprocess.run([python_executable, script_path, nifti_filepath], capture_output=True, text=True, check=True)
-        print(f"NIfTI creation script output: {result.stdout}")
-        if result.stderr:
-            print(f"NIfTI creation script error: {result.stderr}")
-            
-    except subprocess.CalledProcessError as e:
-        print(f"Error running NIfTI creation script: {e}")
-        print(f"Stderr: {e.stderr}")
-        # Optionally, you could return an error response here or just log it
-        # return jsonify({'error': 'Failed to create NIfTI file'}), 500
     except Exception as e:
-        print(f"An unexpected error occurred during NIfTI file creation: {e}")
-        # Optionally, return an error response
-        # return jsonify({'error': 'An unexpected error occurred'}), 500
+        print(f"An error occurred while generating the NIfTI file: {e}")
+        # We continue the request even if the NIfTI generation fails
 
     return jsonify({ 'message': 'success: filter added' }), 201
 
@@ -72,6 +55,28 @@ def modify_filter(id):
     options = request.json.get('activeFilters')
     if id in active_filters:
         active_filters[id] = { 'name': name, 'options': options }
+        
+        # Regenerate the NIfTI file with updated options
+        try:
+            # Remove existing cached file to force regeneration
+            cache_path = os.path.join('/app/filestore/nifti_display_cache', f"{id}.nii.gz")
+            if os.path.exists(cache_path):
+                os.remove(cache_path)
+                
+            # Call the generate_display_nifti function with the filter ID and options
+            result_path = generate_display_nifti(id, options)
+            
+            if result_path:
+                print(f"Successfully updated NIfTI file at {result_path}")
+                # Store the path in the filter data for reference
+                active_filters[id]['nifti_path'] = result_path
+            else:
+                print(f"Failed to update NIfTI file for filter {id}")
+                
+        except Exception as e:
+            print(f"An error occurred while updating the NIfTI file: {e}")
+            # We continue the request even if the NIfTI generation fails
+            
         return jsonify({ 'message': 'success: filter modified' }), 200
     else:
         return jsonify({ 'error': 'error: filter not found'}), 404
@@ -81,6 +86,17 @@ def modify_filter(id):
 def delete_filter(id):
     if id in active_filters:
         del active_filters[id]
+        
+        # Clean up associated NIfTI files
+        try:
+            # Remove cached file
+            cache_path = os.path.join('/app/filestore/nifti_display_cache', f"{id}.nii.gz")
+            if os.path.exists(cache_path):
+                os.remove(cache_path)
+                print(f"Removed cached NIfTI file: {cache_path}")
+        except Exception as e:
+            print(f"Error cleaning up NIfTI files: {e}")
+            
         return jsonify({ 'message': 'success: filter deleted' }), 200
 
     return jsonify({ 'error': 'error: filter not found' }), 404

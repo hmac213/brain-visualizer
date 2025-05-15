@@ -58,55 +58,67 @@ interface FilterProps {
 }
 
 export default function Filter(props: FilterProps) {
-  // initialize as empty (populate from api after useState declarations)
-  const initialFilters: FilterItem[] = [];
-
-  // Manage local state for filters and modals
-  const [filters, setFilters] = useState<FilterItem[]>(initialFilters);
-  // Modal for viewing a filter
-  const [modalFilter, setModalFilter] = useState<FilterItem | null>(null);
+  // Initialize state with placeholders but use useEffect to set real data
+  const [filters, setFilters] = useState<FilterItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   
-  // State for New Filter Modal
+  // Modal states
+  const [modalFilter, setModalFilter] = useState<FilterItem | null>(null);
   const [newFilterModal, setNewFilterModal] = useState(false);
   const [newFilterName, setNewFilterName] = useState('');
-  const [newFilterSelections, setNewFilterSelections] = useState<{ [key: string]: string[] }>(() => {
-    const initial: { [key: string]: string[] } = {};
-    Object.keys(data).forEach(category => {
-      initial[category] = [];
-    });
-    return initial;
+  
+  // Create an empty initial state without dynamic initialization to prevent hydration issues
+  const emptySelections: { [key: string]: string[] } = {};
+  Object.keys(data).forEach(category => {
+    emptySelections[category] = [];
   });
-
-  // State for Edit Filter Modal
+  
+  const [newFilterSelections, setNewFilterSelections] = useState<{ [key: string]: string[] }>(emptySelections);
   const [editFilterModal, setEditFilterModal] = useState<FilterItem | null>(null);
   const [editFilterName, setEditFilterName] = useState('');
-  const [editFilterSelections, setEditFilterSelections] = useState<{ [key: string]: string[] }>(() => {
-    const initial: { [key: string]: string[] } = {};
-    Object.keys(data).forEach(category => {
-      initial[category] = [];
-    });
-    return initial;
-  });
+  const [editFilterSelections, setEditFilterSelections] = useState<{ [key: string]: string[] }>(emptySelections);
 
   const handleRadioChange = (index: number) => {
-    const selectedFilter = filters[index];
-    if (selectedFilter && selectedFilter.id !== props.activeFilterId) {
-      props.onFilterChange(selectedFilter.id);
-    }
+    if (filters && filters[index]) {
+      const selectedFilter = filters[index];
+      if (selectedFilter && selectedFilter.id !== props.activeFilterId) {
+        props.onFilterChange(selectedFilter.id);
+      }
 
-    const updatedFilters = filters.map((filter, i) => ({
-      ...filter,
-      active: i === index
-    }));
-    setFilters(updatedFilters);
+      const updatedFilters = filters.map((filter, i) => ({
+        ...filter,
+        active: i === index
+      }));
+      setFilters(updatedFilters);
+    }
   };
 
-  const handleDelete = (absoluteIndex: number) => {
-    setFilters(prev => prev.filter((_, i) => i !== absoluteIndex));
+  const handleDelete = async (absoluteIndex: number) => {
+    if (filters && filters[absoluteIndex]) {
+      const filterToDelete = filters[absoluteIndex];
+      
+      try {
+        const response = await fetch(`/api/filters/${filterToDelete.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          setFilters(prev => prev.filter((_, i) => i !== absoluteIndex));
+        } else {
+          console.error('Failed to delete filter');
+        }
+      } catch (error) {
+        console.error('Error deleting filter:', error);
+      }
+    }
   };
 
   // fetch initial filters from the api
   useEffect(() => {
+    setLoading(true);
     fetch('/api/filters', {
       method: 'GET',
       headers: {
@@ -115,22 +127,35 @@ export default function Filter(props: FilterProps) {
     })
     .then(response => response.json())
     .then(data => {
-      const fetchedFilters: FilterItem[] = Object.keys(data).map((id) => {
-        return {
-          id: id,
-          name: data[id].name,
-          active: id === props.activeFilterId,
-          activeFilters: data[id].options
-        };
-      });
-      setFilters(fetchedFilters);
+      if (data && typeof data === 'object') {
+        const fetchedFilters: FilterItem[] = Object.keys(data).map((id) => {
+          return {
+            id: id,
+            name: data[id].name,
+            active: id === props.activeFilterId,
+            activeFilters: Array.isArray(data[id].options) ? data[id].options : []
+          };
+        });
+        setFilters(fetchedFilters);
+      } else {
+        console.error('Invalid data format received from API');
+        setFilters([]);
+      }
     })
     .catch(error => {
       console.error('Error fetching filters:', error);
+      setFilters([]);
+    })
+    .finally(() => {
+      setLoading(false);
     });
   }, [props.activeFilterId]);
 
-  return props.filterShowing ? (
+  if (!props.filterShowing) {
+    return null;
+  }
+
+  return (
     <div
       className='absolute inset-0 flex justify-center items-center'
       style={{ pointerEvents: 'auto' }}
@@ -157,19 +182,25 @@ export default function Filter(props: FilterProps) {
             </button>
           </div>
         </div>
-        {/* Filter List with scroll if too long */}
-        <div className='border border-gray-300 rounded-lg bg-gray-100 max-h-[80vh] overflow-y-auto'>
-          <table className='min-w-full divide-y divide-gray-200'>
-            <thead className='bg-gray-50'>
-              <tr>
-                <th className='w-[10%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Active</th>
-                <th className='w-[70%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Filter Name</th>
-                <th className='w-[20%] px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider'>Actions</th>
-              </tr>
-            </thead>
-            <tbody className='bg-white divide-y divide-gray-200'>
-              {filters.map((filter, index) => {
-                return (
+        
+        {/* Loading state */}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-lg">Loading filters...</div>
+          </div>
+        ) : (
+          /* Filter List with scroll if too long */
+          <div className='border border-gray-300 rounded-lg bg-gray-100 max-h-[80vh] overflow-y-auto'>
+            <table className='min-w-full divide-y divide-gray-200'>
+              <thead className='bg-gray-50'>
+                <tr>
+                  <th className='w-[10%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Active</th>
+                  <th className='w-[70%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Filter Name</th>
+                  <th className='w-[20%] px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider'>Actions</th>
+                </tr>
+              </thead>
+              <tbody className='bg-white divide-y divide-gray-200'>
+                {filters.map((filter, index) => (
                   <tr
                     key={filter.id}
                     onClick={() => handleRadioChange(index)}
@@ -193,15 +224,14 @@ export default function Filter(props: FilterProps) {
                           e.stopPropagation();
                           setEditFilterModal(filter);
                           setEditFilterName(filter.name);
-                          setEditFilterSelections(() => {
-                            const selections: { [key: string]: string[] } = {};
-                            Object.keys(data).forEach(category => {
-                              selections[category] = data[category].filter(option =>
-                                filter.activeFilters.includes(option)
-                              );
-                            });
-                            return selections;
+                          
+                          const selections: { [key: string]: string[] } = {};
+                          Object.keys(data).forEach(category => {
+                            selections[category] = data[category].filter(option =>
+                              filter.activeFilters.includes(option)
+                            );
                           });
+                          setEditFilterSelections(selections);
                         }}
                         className='px-2 py-1 mr-2 bg-white border border-gray-300 rounded-md hover:bg-gray-100'
                       >
@@ -227,11 +257,11 @@ export default function Filter(props: FilterProps) {
                       </button>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Modal Popup for Viewing a Filter's Selected Filters */}
@@ -284,7 +314,7 @@ export default function Filter(props: FilterProps) {
                 <div key={category} className='mb-2'>
                   <div className='font-medium text-gray-800'>{category}</div>
                   <div className='flex flex-wrap gap-2 mt-1'>
-                        {data[category].map((option: string) => (
+                    {data[category].map((option: string) => (
                       <label key={option} className='flex items-center space-x-1'>
                         <input
                           type='checkbox'
@@ -337,13 +367,13 @@ export default function Filter(props: FilterProps) {
                     .then(data => {
                       setFilters(prev => [...prev, newFilter]);
                       setNewFilterName('');
-                      setNewFilterSelections(() => {
-                        const initial: { [key: string]: string[] } = {};
-                        Object.keys(data).forEach(category => {
-                          initial[category] = [];
-                        });
-                        return initial;
+                      
+                      const resetSelections: { [key: string]: string[] } = {};
+                      Object.keys(data).forEach(category => {
+                        resetSelections[category] = [];
                       });
+                      setNewFilterSelections(resetSelections);
+                      
                       setNewFilterModal(false);
                     })
                     .catch(error => {
@@ -391,9 +421,9 @@ export default function Filter(props: FilterProps) {
                       <label key={option} className='flex items-center space-x-1'>
                         <input
                           type='checkbox'
-                          checked={editFilterSelections[category].includes(option)}
+                          checked={(editFilterSelections[category] || []).includes(option)}
                           onChange={() => {
-                            const current = editFilterSelections[category];
+                            const current = editFilterSelections[category] || [];
                             const newSelection = current.includes(option)
                               ? current.filter(o => o !== option)
                               : [...current, option];
@@ -419,8 +449,31 @@ export default function Filter(props: FilterProps) {
                 onClick={() => {
                   const selectedOptions = Object.values(editFilterSelections).flat();
                   if (editFilterName.trim() && editFilterModal) {
-                    setFilters(prev => prev.map(filter => filter === editFilterModal ? { ...filter, name: editFilterName, activeFilters: selectedOptions } : filter));
-                    setEditFilterModal(null);
+                    // Update the filter on the backend
+                    fetch(`/api/filters/${editFilterModal.id}`, {
+                      method: 'PUT',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        name: editFilterName,
+                        activeFilters: selectedOptions
+                      })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                      // Update the local state
+                      setFilters(prev => prev.map(filter => 
+                        filter.id === editFilterModal.id 
+                          ? { ...filter, name: editFilterName, activeFilters: selectedOptions } 
+                          : filter
+                      ));
+                      setEditFilterModal(null);
+                    })
+                    .catch(error => {
+                      console.error('Error updating filter:', error);
+                    });
                   }
                 }}
                 className='px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors'
@@ -432,5 +485,5 @@ export default function Filter(props: FilterProps) {
         </div>
       )}
     </div>
-  ) : null;
+  );
 }
