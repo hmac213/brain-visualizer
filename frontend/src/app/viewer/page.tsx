@@ -5,6 +5,12 @@ import { SlidersHorizontal, ChartColumn } from 'lucide-react'
 import Filter from '@/components/filter';
 import DataView from '@/components/data_views';
 import GlassBrainViewer from '@/components/GlassBrainViewer';
+import dynamic from 'next/dynamic';
+
+// Use dynamic import for the Filter component to avoid hydration issues
+const DynamicFilter = dynamic(() => import('@/components/filter'), {
+  ssr: false
+});
 
 export default function Viewer() {
   const [filterShowing, toggleFilter] = useState(false);
@@ -12,6 +18,12 @@ export default function Viewer() {
   const [activeFilterId, setActiveFilterId] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [activeViewType, setActiveViewType] = useState<string>('surface');
+  const [isClient, setIsClient] = useState(false);
+
+  // Set isClient to true when component mounts - avoid hydration mismatch
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     fetch(`/api/filters/get_current`)
@@ -65,23 +77,29 @@ export default function Viewer() {
     }
   };
 
+  // Early return during server-side rendering
+  if (!isClient) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
   return (
     <div style={{ display: 'grid', width: '100vw', height: '100vh', overflow: 'hidden' }}>
-      <iframe
-        ref={iframeRef}
-        key={activeFilterId}
-        src='/api/viewer'
-        style={{
-            gridArea: '1 / 1 / 2 / 2',
-            width: '100%',
-            height: '100%',
-            border: 'none',
-            zIndex: 0,
-            marginTop: '64px',
-            display: activeViewType === 'surface' ? 'block' : 'none'
-        }}
-        title={`Pycortex WebGL Viewer`}
-       />
+      {activeViewType === 'surface' && (
+        <iframe
+          ref={iframeRef}
+          key={activeFilterId}
+          src='/api/viewer'
+          style={{
+              gridArea: '1 / 1 / 2 / 2',
+              width: '100%',
+              height: '100%',
+              border: 'none',
+              zIndex: 0,
+              marginTop: '64px'
+          }}
+          title={`Pycortex WebGL Viewer`}
+        />
+      )}
 
       {activeViewType === 'glass' && (
           <div style={{ gridArea: '1 / 1 / 2 / 2', width: '100%', height: 'calc(100% - 64px)', marginTop: '64px', zIndex: 0 }}>
@@ -137,7 +155,7 @@ export default function Viewer() {
             </button>
          </div>
 
-        <Filter
+        <DynamicFilter
           filterShowing={filterShowing}
           toggleFilter={toggleFilter}
           activeFilterId={activeFilterId}

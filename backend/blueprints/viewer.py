@@ -1,6 +1,6 @@
 from flask import current_app
 from patches import template_patch
-from file_loading.nifti_loading import load_nifti
+from db_loading.nifti_loading import load_nifti
 from flask import Blueprint, send_from_directory
 import cortex
 import os
@@ -13,15 +13,16 @@ out_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../static_vi
 @viewer.route('/viewer')
 def req_visualize_brain():
     current_filter = current_app.config['CURRENT_FILTER']
-    current_nii_name = ''
+    current_filter_id = ''
     for id in current_filter:
-        current_nii_name = id
-    # Construct path relative to the app's root path
+        current_filter_id = id
+    
+    # Use the Docker volume path for NIfTI files
     nifti_file_path = os.path.join(
-        current_app.root_path, 
-        'compressed_nifti_files', 
-        f'filter_{current_nii_name}.nii.gz'
+        '/app/filestore/nifti_display_cache', 
+        f"{current_filter_id}.nii.gz"
     )
+    
     current_nii = load_nifti(nifti_file_path)
     current_nii_volume_data = current_nii[0]
     current_nii_volume = cortex.Volume(current_nii_volume_data, subject='S1', xfmname='fullhead')

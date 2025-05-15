@@ -6,8 +6,12 @@ wheel
 numpy
 cython
 nibabel
-scipy
 git+https://github.com/gallantlab/pycortex.git
 scikit-image
 templateflow
-scipy # For interpolation
+scipy
+SQLAlchemy
+Flask-SQLAlchemy
+Flask-Migrate
+psycopg2-binary
+python-dotenv
