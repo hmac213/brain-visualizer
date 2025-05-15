@@ -13,7 +13,8 @@ from models import SampleData
 # --- Configuration ---
 OUT_DIR = "../filestore/test_db_nifti"
 SHAPE   = (31, 100, 100)
-SIGMA   = (3, 3, 3)  # smoothing for each hotspot
+# Base SIGMA values - these will be adjusted based on tumor size
+BASE_SIGMA = (5, 5, 5)  # increased from (3, 3, 3) to make tumors larger by default
 
 # Make sure output directory exists
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -26,7 +27,19 @@ with app.app_context():
     for sample in samples:
         # Initialize empty volume
         vol = np.zeros(SHAPE, dtype=np.float32)
-
+        
+        # Adjust sigma based on tumor size
+        sigma_multiplier = 1.0  # default multiplier
+        if sample.tumor_size == "small":
+            sigma_multiplier = 0.8
+        elif sample.tumor_size == "medium":
+            sigma_multiplier = 1.2
+        elif sample.tumor_size == "large":
+            sigma_multiplier = 1.6
+            
+        # Calculate the actual sigma for this sample
+        sigma = tuple(s * sigma_multiplier for s in BASE_SIGMA)
+        
         # Place `tumor_count` random Gaussian hotspots
         for _ in range(sample.tumor_count):
             # pick a random integer center in each dimension
@@ -37,7 +50,7 @@ with app.app_context():
             blob[tuple(center)] = 1.0
 
             # smooth it to spread out into a blob
-            blob = gaussian_filter(blob, sigma=SIGMA)
+            blob = gaussian_filter(blob, sigma=sigma)
 
             # accumulate into the volume
             vol += blob
@@ -55,4 +68,4 @@ with app.app_context():
 
         out_path = os.path.join(OUT_DIR, f"{sample.id}.nii.gz")
         nib.save(img, out_path)
-        print(f"Wrote {out_path}")
+        print(f"Wrote {out_path} with tumor size: {sample.tumor_size}, sigma: {sigma}")

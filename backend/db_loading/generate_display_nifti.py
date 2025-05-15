@@ -96,6 +96,10 @@ def generate_display_nifti(filter_id, options):
 # Test the function when run directly
 if __name__ == "__main__":
     print("Testing generate_display_nifti function")
+
+    # override the default paths
+    INPUT_DIR = '../filestore/test_db_nifti'
+    OUT_DIR = '../filestore/nifti_display_cache'
     
     # Create a small test case to check paths and logic
     os.makedirs(INPUT_DIR, exist_ok=True)
