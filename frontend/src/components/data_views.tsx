@@ -16,6 +16,7 @@ interface DataProps {
     dataShowing: boolean;
     toggleData: React.Dispatch<React.SetStateAction<boolean>>;
     onWidthChange?: (width: number) => void;
+    onFullScreenChange?: (isFullScreen: boolean) => void;
 }
 
 export default function DataView(props: DataProps) {
@@ -37,6 +38,13 @@ export default function DataView(props: DataProps) {
       props.onWidthChange(width);
     }
   }, [width, isFullScreen, props.onWidthChange]);
+
+  // Notify parent component of fullscreen state changes
+  useEffect(() => {
+    if (props.onFullScreenChange) {
+      props.onFullScreenChange(isFullScreen);
+    }
+  }, [isFullScreen, props.onFullScreenChange]);
 
   useEffect(() => {
     fetch('/api/charts', {
@@ -72,13 +80,15 @@ export default function DataView(props: DataProps) {
 
   return props.dataShowing ? (
       <div
-        className={`fixed top-0 left-0 h-full bg-white shadow-lg relative ${
+        className={`fixed top-0 h-screen bg-white shadow-lg relative ${
           !isFullScreen ? '' : 'w-full'
         }`}
         style={{ 
           zIndex: 50, 
           pointerEvents: 'auto',
+          left: isFullScreen ? '0' : '64px', // Account for left sidebar
           width: isFullScreen ? '100%' : `${width}%`,
+          maxHeight: '100vh', // Ensure it never exceeds viewport height
           // Disable transition during resize for better performance
           transition: isResizing ? 'none' : 'all 0.3s ease-in-out'
         }}
@@ -86,7 +96,7 @@ export default function DataView(props: DataProps) {
         {/* Resize handle - only show when not in fullscreen */}
         {!isFullScreen && <ResizeHandle />}
 
-        <div className='bg-white h-full w-full overflow-hidden flex flex-col'>
+        <div className='bg-white h-full w-full overflow-hidden flex flex-col max-h-screen'>
           {/* Header */}
           <div className='flex justify-between items-center p-3 border-b flex-shrink-0'>
             <h1 className='text-lg font-semibold'>Data Visualizations</h1>
@@ -108,43 +118,41 @@ export default function DataView(props: DataProps) {
             </div>
           </div>
 
-          {/* Fixed Toolbar */}
-          <div className='px-3 pt-3 pb-2 border-b flex-shrink-0'>
-            <div className='flex items-center space-x-3'>
-              {isFullScreen && (
-                /* Grid/List toggle - only show in fullscreen mode */
-                <>
-                  <button 
-                    className={`px-4 py-2 transition-colors text-sm font-medium rounded-md ${
-                      isGridLayout ? 'bg-[#2774AE] text-white' : 'hover:bg-[#2774AE] hover:text-white'
-                    }`}
-                    onClick={() => setIsGridLayout(true)}
-                    title="Grid Layout"
-                  >
-                    <LayoutGrid className='w-4 h-4' />
-                  </button>
-                  <button 
-                    className={`px-4 py-2 transition-colors text-sm font-medium rounded-md ${
-                      !isGridLayout ? 'bg-[#2774AE] text-white' : 'hover:bg-[#2774AE] hover:text-white'
-                    }`}
-                    onClick={() => setIsGridLayout(false)}
-                    title="Vertical Layout"
-                  >
-                    <StretchHorizontal className='w-4 h-4' />
-                  </button>
-                </>
-              )}
-              <button
-                onClick={() => setNewChartModal(true)}
-                className={`${isFullScreen ? 'ml-auto' : ''} px-3 py-2 bg-[#2774AE] text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors`}
-              >
-                {width > 30 ? 'New Chart' : 'New'}
-              </button>
-            </div>
-          </div>
+          {/* Content - Strict height container with scroll */}
+          <div className='flex-1 overflow-y-auto p-3 max-h-[calc(100vh-3.5rem)]'>
+            {/* Optional Grid/List Toggle for Fullscreen */}
+            {isFullScreen && (
+              <div className='flex items-center space-x-3 mb-3'>
+                <button 
+                  className={`px-4 py-2 transition-colors text-sm font-medium rounded-md ${
+                    isGridLayout ? 'bg-[#2774AE] text-white' : 'hover:bg-[#2774AE] hover:text-white'
+                  }`}
+                  onClick={() => setIsGridLayout(true)}
+                  title="Grid Layout"
+                >
+                  <LayoutGrid className='w-4 h-4' />
+                </button>
+                <button 
+                  className={`px-4 py-2 transition-colors text-sm font-medium rounded-md ${
+                    !isGridLayout ? 'bg-[#2774AE] text-white' : 'hover:bg-[#2774AE] hover:text-white'
+                  }`}
+                  onClick={() => setIsGridLayout(false)}
+                  title="Vertical Layout"
+                >
+                  <StretchHorizontal className='w-4 h-4' />
+                </button>
+              </div>
+            )}
 
-          {/* Scrollable Charts Content */}
-          <div className='flex-1 overflow-y-auto p-3'>
+            {/* New Chart Button - matching filter component style */}
+            <button
+              onClick={() => setNewChartModal(true)}
+              className='w-full mb-3 px-3 py-2 bg-[#2774AE] text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors'
+            >
+              New Chart
+            </button>
+
+            {/* Charts Content with constrained heights */}
             {Object.keys(activeChartConfigs).length > 0 ? (
               <div className={`${
                 (isGridLayout && isFullScreen)
@@ -154,13 +162,16 @@ export default function DataView(props: DataProps) {
                 {Object.entries(activeChartConfigs).map(([chartId, config]) => {
                   if (config && config.data && config.layout) {
                     return (
-                      <div key={chartId} className={`${
-                        (isGridLayout && isFullScreen) 
-                          ? 'min-h-[400px]' 
-                          : isFullScreen 
-                            ? 'min-h-[500px]' 
-                            : 'min-h-[300px]'
-                      }`}>
+                      <div 
+                        key={chartId} 
+                        className={`border border-gray-200 rounded-lg overflow-hidden ${
+                          (isGridLayout && isFullScreen) 
+                            ? 'h-[400px]' 
+                            : isFullScreen 
+                              ? 'h-[500px]' 
+                              : 'h-[300px]'
+                        }`}
+                      >
                         <Chart plotlyConfig={config} />
                       </div>
                     );

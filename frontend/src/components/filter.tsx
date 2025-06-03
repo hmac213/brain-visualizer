@@ -65,6 +65,7 @@ interface FilterProps {
   activeFilterId: string | null;
   onFilterChange: (filterId: string) => void;
   onWidthChange?: (width: number) => void;
+  onFullScreenChange?: (isFullScreen: boolean) => void;
 }
 
 export default function Filter(props: FilterProps) {
@@ -86,6 +87,13 @@ export default function Filter(props: FilterProps) {
       props.onWidthChange(width);
     }
   }, [width, isFullScreen, props.onWidthChange]);
+
+  // Notify parent component of fullscreen state changes
+  useEffect(() => {
+    if (props.onFullScreenChange) {
+      props.onFullScreenChange(isFullScreen);
+    }
+  }, [isFullScreen, props.onFullScreenChange]);
 
   // Modal states
   const [modalFilter, setModalFilter] = useState<FilterItem | null>(null);
@@ -290,13 +298,15 @@ export default function Filter(props: FilterProps) {
 
   return (
     <div
-      className={`fixed top-0 left-0 h-full bg-white shadow-lg relative ${
+      className={`fixed top-0 h-screen bg-white shadow-lg relative ${
         !isFullScreen ? '' : 'w-full'
       }`}
       style={{ 
         zIndex: 50, 
         pointerEvents: 'auto',
+        left: isFullScreen ? '0' : '64px', // Account for left sidebar
         width: isFullScreen ? '100%' : `${width}%`,
+        maxHeight: '100vh', // Ensure it never exceeds viewport height
         // Disable transition during resize for better performance
         transition: isResizing ? 'none' : 'all 0.3s ease-in-out'
       }}

@@ -5,6 +5,7 @@ import { SlidersHorizontal, ChartColumn } from 'lucide-react'
 import Filter from '@/components/filter';
 import DataView from '@/components/data_views';
 import GlassBrainViewer from '@/components/GlassBrainViewer';
+import LeftSidebar from '@/components/LeftSidebar';
 import dynamic from 'next/dynamic';
 
 // Use dynamic import for the Filter component to avoid hydration issues
@@ -13,11 +14,13 @@ const DynamicFilter = dynamic(() => import('@/components/filter'), {
 });
 
 export default function Viewer() {
-  const [filterShowing, toggleFilter] = useState(false);
-  const [dataShowing, toggleData] = useState(false);
+  const [filterShowing, setFilterShowing] = useState(false);
+  const [dataShowing, setDataShowing] = useState(false);
   const [activeFilterId, setActiveFilterId] = useState<string | null>(null);
   const [filterWidth, setFilterWidth] = useState(25);
   const [dataWidth, setDataWidth] = useState(25);
+  const [isFilterFullScreen, setIsFilterFullScreen] = useState(false);
+  const [isDataFullScreen, setIsDataFullScreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [activeViewType, setActiveViewType] = useState<string>('surface');
   const [isClient, setIsClient] = useState(false);
@@ -79,28 +82,67 @@ export default function Viewer() {
     }
   };
 
+  // Toggle functions that ensure only one panel is open at a time
+  const toggleFilter = () => {
+    if (dataShowing) {
+      setDataShowing(false);
+      setIsDataFullScreen(false); // Reset data fullscreen when closing
+    }
+    const newFilterShowing = !filterShowing;
+    setFilterShowing(newFilterShowing);
+    // If closing filter panel, reset its fullscreen state
+    if (!newFilterShowing) {
+      setIsFilterFullScreen(false);
+    }
+  };
+
+  const toggleData = () => {
+    if (filterShowing) {
+      setFilterShowing(false);
+      setIsFilterFullScreen(false); // Reset filter fullscreen when closing
+    }
+    const newDataShowing = !dataShowing;
+    setDataShowing(newDataShowing);
+    // If closing data panel, reset its fullscreen state
+    if (!newDataShowing) {
+      setIsDataFullScreen(false);
+    }
+  };
+
   // Early return during server-side rendering
   if (!isClient) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  // Calculate responsive transforms based on current panel width
+  // Calculate responsive transforms based on current panel width and left sidebar
   const getResponsiveStyle = () => {
+    // In fullscreen mode (panel showing AND fullscreen), no left sidebar offset needed
+    if ((filterShowing && isFilterFullScreen) || (dataShowing && isDataFullScreen)) {
+      return {
+        transition: 'transform 0.3s ease-in-out',
+        transformOrigin: 'center center',
+        transform: 'translateX(0%)',
+      };
+    }
+
+    const leftSidebarWidthRem = 4; // 4rem = 64px for the left sidebar
+    const leftSidebarWidthPercent = (leftSidebarWidthRem * 16) / window.innerWidth * 100; // Convert to percentage
+
     if (filterShowing || dataShowing) {
       const currentWidth = filterShowing ? filterWidth : dataWidth;
-      // Translate by half the panel width to keep centered
-      const translate = currentWidth / 2;
+      // Add half the panel width to the base translate to keep centered
+      const totalTranslatePercent = leftSidebarWidthPercent + (currentWidth / 2);
       
       return {
         transition: 'transform 0.3s ease-in-out',
         transformOrigin: 'center center',
-        transform: `translateX(${translate}%)`,
+        transform: `translateX(${totalTranslatePercent}%)`,
       };
     }
     return {
       transition: 'transform 0.3s ease-in-out',
       transformOrigin: 'center center',
-      transform: 'translateX(0)',
+      transform: `translateX(${leftSidebarWidthPercent}%)`,
     };
   };
 
@@ -108,6 +150,19 @@ export default function Viewer() {
 
   return (
     <div style={{ display: 'grid', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+      {/* Left Sidebar - hide only when any panel is both showing AND in fullscreen */}
+      {!(filterShowing && isFilterFullScreen) && !(dataShowing && isDataFullScreen) && (
+        <LeftSidebar
+          filterShowing={filterShowing}
+          dataShowing={dataShowing}
+          onFilterToggle={toggleFilter}
+          onDataToggle={toggleData}
+          activeViewType={activeViewType}
+          onViewTypeChange={setActiveViewType}
+        />
+      )}
+
+      {/* Brain Views */}
       {activeViewType === 'surface' && (
         <iframe
           ref={iframeRef}
@@ -119,7 +174,6 @@ export default function Viewer() {
               height: '100%',
               border: 'none',
               zIndex: 0,
-              marginTop: '64px',
               ...responsiveStyle
           }}
           title={`Pycortex WebGL Viewer`}
@@ -131,8 +185,7 @@ export default function Viewer() {
             style={{ 
               gridArea: '1 / 1 / 2 / 2', 
               width: '100%', 
-              height: 'calc(100% - 64px)', 
-              marginTop: '64px', 
+              height: '100%', 
               zIndex: 0,
               ...responsiveStyle
             }}
@@ -141,66 +194,21 @@ export default function Viewer() {
           </div>
       )}
 
+      {/* Panel Container */}
       <div style={{ gridArea: '1 / 1 / 2 / 2', width: '100%', height: '100%', border: 'none', zIndex: 10, pointerEvents: 'none' }}>
-        {!filterShowing && !dataShowing && (
-          <div className="fixed inset-x-0 top-0 z-20 flex h-16 w-full items-center justify-between bg-white" style={{ pointerEvents: 'auto' }}>
-            <div className="flex gap-8 p-8">
-              <button
-                onClick={() => toggleFilter(prev => !prev)}
-                className="cursor-pointer text-gray-800"
-                title="Toggle Filters"
-              >
-                Filters
-              </button>
-              <button
-                onClick={() => toggleData(prev => !prev)}
-                className="cursor-pointer text-gray-800"
-                title="Toggle Data Visualizations"
-              >
-                Charts
-              </button>
-            </div>
-            <div className="flex items-center justify-center h-full" style={{ backgroundColor: '#2774AE' }}>
-              <img src='/UCLA_logo.svg' style={{ height: '100%', width: 'auto' }} alt="UCLA logo" />
-            </div>
-          </div>
-        )}
-
-        {/* View mode selector buttons - change from hidden to flex when reimplemented */}
-        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 hidden flex-col gap-2 p-2 bg-white rounded-r-lg shadow-md" style={{ pointerEvents: 'auto' }}>
-           <button
-            onClick={() => setActiveViewType('surface')}
-            className={`px-3 py-1 text-sm font-medium transition-colors ${
-              activeViewType === 'surface'
-                ? 'bg-[#2774AE] text-white rounded-md'
-                : 'bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400'
-            }`}
-           >
-             Surface View
-           </button>
-           <button
-              onClick={() => setActiveViewType('glass')}
-              className={`px-3 py-1 text-sm font-medium transition-colors ${
-                activeViewType === 'glass'
-                  ? 'bg-[#2774AE] text-white rounded-md'
-                  : 'bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400'
-              }`}
-            >
-              Glass Brain
-            </button>
-         </div>
-
         <DynamicFilter
           filterShowing={filterShowing}
-          toggleFilter={toggleFilter}
+          toggleFilter={setFilterShowing}
           activeFilterId={activeFilterId}
           onFilterChange={handleFilterChange}
           onWidthChange={setFilterWidth}
+          onFullScreenChange={setIsFilterFullScreen}
         />
         <DataView 
           dataShowing={dataShowing} 
-          toggleData={toggleData}
+          toggleData={setDataShowing}
           onWidthChange={setDataWidth}
+          onFullScreenChange={setIsDataFullScreen}
         />
       </div>
     </div>

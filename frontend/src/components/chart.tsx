@@ -83,12 +83,20 @@ export default function Chart(props: ChartProps) {
   }
 
   return (
-    <div className='w-full border border-gray-300 rounded-lg bg-gray-100 overflow-hidden'>
+    <div className='w-full h-full border border-gray-300 rounded-lg bg-gray-100 overflow-hidden'>
       <Plot 
         data={props.plotlyConfig.data}
-        layout={{ ...props.plotlyConfig.layout, autosize: true }}
+        layout={{ 
+          ...props.plotlyConfig.layout, 
+          autosize: true,
+          margin: { l: 50, r: 50, t: 50, b: 50 } // Add consistent margins
+        }}
         useResizeHandler={true}
         style={{ width: "100%", height: "100%" }}
+        config={{ 
+          responsive: true, 
+          displayModeBar: false // Hide the toolbar to save space
+        }}
       />
     </div>
   );
