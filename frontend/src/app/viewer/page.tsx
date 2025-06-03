@@ -82,37 +82,80 @@ export default function Viewer() {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
+  // Calculate responsive transforms and sizing for computer screens only
+  const getResponsiveStyle = () => {
+    if (filterShowing || dataShowing) {
+      return {
+        transition: 'transform 0.3s ease-in-out',
+        transformOrigin: 'center center',
+        // Only scale horizontally, no vertical scaling
+        transform: 'scaleX(0.8) translateX(20%)', // Default for medium screens
+      };
+    }
+    return {
+      transition: 'transform 0.3s ease-in-out',
+      transformOrigin: 'center center',
+      transform: 'scaleX(1) translateX(0)',
+    };
+  };
+
+  const responsiveStyle = getResponsiveStyle();
+
   return (
     <div style={{ display: 'grid', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+      {/* Responsive CSS for transforms - computer screens only */}
+      <style jsx>{`
+        .brain-container {
+          ${filterShowing || dataShowing ? `
+            /* Medium desktop (default) */
+            transform: scaleX(0.8) translateX(20%);
+            
+            /* Large desktop */
+            @media (min-width: 1280px) {
+              transform: scaleX(0.85) translateX(18%);
+            }
+            
+            /* Extra large desktop */
+            @media (min-width: 1536px) {
+              transform: scaleX(0.9) translateX(15%);
+            }
+          ` : `
+            transform: scaleX(1) translateX(0);
+          `}
+          transition: transform 0.3s ease-in-out;
+          transform-origin: center center;
+        }
+      `}</style>
+
       {activeViewType === 'surface' && (
         <iframe
           ref={iframeRef}
           key={activeFilterId}
           src='/api/viewer'
+          className="brain-container"
           style={{
               gridArea: '1 / 1 / 2 / 2',
               width: '100%',
               height: '100%',
               border: 'none',
               zIndex: 0,
-              marginTop: '64px',
-              transition: 'transform 0.3s ease-in-out',
-              transform: filterShowing ? 'translateX(25%)' : dataShowing ? 'translateX(25%)' : 'translateX(0)'
+              marginTop: '64px'
           }}
           title={`Pycortex WebGL Viewer`}
         />
       )}
 
       {activeViewType === 'glass' && (
-          <div style={{ 
+          <div 
+            className="brain-container"
+            style={{ 
               gridArea: '1 / 1 / 2 / 2', 
               width: '100%', 
               height: 'calc(100% - 64px)', 
               marginTop: '64px', 
-              zIndex: 0,
-              transition: 'transform 0.3s ease-in-out',
-              transform: filterShowing ? 'translateX(25%)' : dataShowing ? 'translateX(25%)' : 'translateX(0)'
-          }}>
+              zIndex: 0
+            }}
+          >
               <GlassBrainViewer />
           </div>
       )}

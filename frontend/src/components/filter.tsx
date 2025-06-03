@@ -2,53 +2,60 @@ import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Maximize2, X } from 'lucide-react';
 
-// Remove the baseURL since we're using the proxy
-// const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
+// Types based on database models
+interface FilterOption {
+  label: string;
+  min?: number;
+  max?: number;
+}
 
-// sample filter categories (replace later with real categories)
-const data: Record<string, string[]> = {
-  origin_cancer: [
-    "Lung",
-    "Liver",
-    "Breast",
-    "Colorectal",
-    "Melanoma",
-    "Renal"
-  ],
-  tumor_count: [
-    "Single",
-    "2-3 lesions",
-    "4+ lesions"
-  ],
-  tumor_size: [
-    "Small (<1cm)",
-    "Medium (1-3cm)",
-    "Large (>3cm)"
-  ],
-  tumor_location: [
-    "Frontal Lobe",
-    "Parietal Lobe",
-    "Temporal Lobe",
-    "Occipital Lobe",
-    "Cerebellum",
-    "Brainstem"
-  ],
-  patient_age: [
-    "<20",
-    "21-30",
-    "31-40",
-    "41-50",
-    "51-60",
-    "61-70",
-    "70+"
-  ],
-};
+interface FilterCategory {
+  type: 'select' | 'range';
+  options: string[] | FilterOption[];
+}
+
+interface FilterOptions {
+  patient_demographics: {
+    origin_cancer: FilterCategory;
+    sex: FilterCategory;
+    age_range: FilterCategory;
+    height_range: FilterCategory;
+    weight_range: FilterCategory;
+    tumor_count_range: FilterCategory;
+  };
+  clinical_data: {
+    systolic_bp_range: FilterCategory;
+    diastolic_bp_range: FilterCategory;
+  };
+  tumor_characteristics: {
+    tumor_location: FilterCategory;
+    tumor_volume_range: FilterCategory;
+  };
+  treatment_data: {
+    dose_range: FilterCategory;
+  };
+}
+
+interface FilterCriteria {
+  patient_demographics?: {
+    [key: string]: string[] | FilterOption[];
+  };
+  clinical_data?: {
+    [key: string]: string[] | FilterOption[];
+  };
+  tumor_characteristics?: {
+    [key: string]: string[] | FilterOption[];
+  };
+  treatment_data?: {
+    [key: string]: string[] | FilterOption[];
+  };
+}
 
 interface FilterItem {
   id: string;
   name: string;
   active: boolean;
-  activeFilters: string[];
+  criteria: FilterCriteria;
 }
 
 interface FilterProps {
@@ -60,26 +67,35 @@ interface FilterProps {
 
 export default function Filter(props: FilterProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
-  
-  // Initialize state with placeholders but use useEffect to set real data
   const [filters, setFilters] = useState<FilterItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
   
   // Modal states
   const [modalFilter, setModalFilter] = useState<FilterItem | null>(null);
   const [newFilterModal, setNewFilterModal] = useState(false);
   const [newFilterName, setNewFilterName] = useState('');
-  
-  // Create an empty initial state without dynamic initialization to prevent hydration issues
-  const emptySelections: { [key: string]: string[] } = {};
-  Object.keys(data).forEach(category => {
-    emptySelections[category] = [];
-  });
-  
-  const [newFilterSelections, setNewFilterSelections] = useState<{ [key: string]: string[] }>(emptySelections);
+  const [newFilterCriteria, setNewFilterCriteria] = useState<FilterCriteria>({});
   const [editFilterModal, setEditFilterModal] = useState<FilterItem | null>(null);
   const [editFilterName, setEditFilterName] = useState('');
-  const [editFilterSelections, setEditFilterSelections] = useState<{ [key: string]: string[] }>(emptySelections);
+  const [editFilterCriteria, setEditFilterCriteria] = useState<FilterCriteria>({});
+
+  // Fetch filter options from backend
+  useEffect(() => {
+    fetch('/api/filter-options', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      setFilterOptions(data);
+    })
+    .catch(error => {
+      console.error('Error fetching filter options:', error);
+    });
+  }, []);
 
   const handleRadioChange = (index: number) => {
     if (filters && filters[index]) {
@@ -119,6 +135,104 @@ export default function Filter(props: FilterProps) {
     }
   };
 
+  const handleCriteriaChange = (category: string, filterType: string, option: string | FilterOption, isSelected: boolean, setCriteria: React.Dispatch<React.SetStateAction<FilterCriteria>>) => {
+    setCriteria(prev => {
+      const updated = { ...prev };
+      if (!updated[category as keyof FilterCriteria]) {
+        updated[category as keyof FilterCriteria] = {};
+      }
+      
+      const categoryData = updated[category as keyof FilterCriteria] as { [key: string]: (string | FilterOption)[] };
+      
+      if (!categoryData[filterType]) {
+        categoryData[filterType] = [];
+      }
+      
+      if (isSelected) {
+        categoryData[filterType] = [...categoryData[filterType], option];
+      } else {
+        categoryData[filterType] = categoryData[filterType].filter(item => 
+          typeof item === 'string' && typeof option === 'string' 
+            ? item !== option 
+            : JSON.stringify(item) !== JSON.stringify(option)
+        );
+      }
+      
+      return updated;
+    });
+  };
+
+  const renderFilterSection = (
+    categoryKey: string, 
+    categoryData: { [key: string]: FilterCategory }, 
+    selectedCriteria: FilterCriteria, 
+    setCriteria: React.Dispatch<React.SetStateAction<FilterCriteria>>
+  ) => {
+    return (
+      <div key={categoryKey} className='mb-4'>
+        <h3 className='font-medium text-gray-800 mb-2 capitalize'>
+          {categoryKey.replace(/_/g, ' ')}
+        </h3>
+        
+        {Object.entries(categoryData).map(([filterKey, filterData]) => (
+          <div key={filterKey} className='mb-3 pl-2'>
+            <div className='font-medium text-gray-700 text-sm mb-1'>
+              {filterKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            </div>
+            
+            <div className='flex flex-wrap gap-2'>
+              {filterData.options.map((option: string | FilterOption) => {
+                const optionLabel = typeof option === 'string' ? option : option.label;
+                const isSelected = selectedCriteria[categoryKey as keyof FilterCriteria]?.[filterKey]?.some(
+                  item => typeof item === 'string' && typeof option === 'string' 
+                    ? item === option 
+                    : JSON.stringify(item) === JSON.stringify(option)
+                ) || false;
+                
+                return (
+                  <label key={optionLabel} className='flex items-center space-x-1 text-xs'>
+                    <input
+                      type='checkbox'
+                      checked={isSelected}
+                      onChange={(e) => handleCriteriaChange(
+                        categoryKey, 
+                        filterKey, 
+                        option, 
+                        e.target.checked, 
+                        setCriteria
+                      )}
+                      className='h-3 w-3 accent-blue-600'
+                    />
+                    <span>{optionLabel}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const formatCriteriaForDisplay = (criteria: FilterCriteria): string => {
+    const items: string[] = [];
+    
+    Object.entries(criteria).forEach(([category, filters]) => {
+      if (filters && typeof filters === 'object') {
+        Object.entries(filters).forEach(([filterType, values]) => {
+          if (values && Array.isArray(values) && values.length > 0) {
+            const valueStrings = values.map((v: string | FilterOption) => 
+              typeof v === 'string' ? v : v.label
+            );
+            items.push(`${filterType.replace(/_/g, ' ')}: ${valueStrings.join(', ')}`);
+          }
+        });
+      }
+    });
+    
+    return items.join('; ') || 'No filters applied';
+  };
+
   // fetch initial filters from the api
   useEffect(() => {
     setLoading(true);
@@ -136,7 +250,7 @@ export default function Filter(props: FilterProps) {
             id: id,
             name: data[id].name,
             active: id === props.activeFilterId,
-            activeFilters: Array.isArray(data[id].options) ? data[id].options : []
+            criteria: data[id].criteria || {}
           };
         });
         setFilters(fetchedFilters);
@@ -166,124 +280,188 @@ export default function Filter(props: FilterProps) {
       style={{ zIndex: 50, pointerEvents: 'auto' }}
     >
       <div className='bg-white h-full w-full overflow-hidden'>
-        {/* Header with Title, New Filter button, and Close button */}
-        <div className='flex justify-between items-center p-4 border-b'>
-          <h1 className='text-xl font-semibold'>Filters</h1>
-          <div className='flex items-center space-x-2'>
+        {/* Header */}
+        <div className='flex justify-between items-center p-3 border-b'>
+          <h1 className='text-lg font-semibold'>Filters</h1>
+          <div className='flex items-center space-x-1'>
             <button
               onClick={() => setIsFullScreen(!isFullScreen)}
-              className='p-2 hover:bg-gray-100 rounded-md transition-colors'
+              className='p-1.5 hover:bg-gray-100 rounded-md transition-colors'
               title={isFullScreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
             >
-              <Maximize2 className='w-5 h-5' />
+              <Maximize2 className='w-4 h-4' />
             </button>
             <button
               onClick={() => props.toggleFilter(false)}
-              className='p-2 hover:bg-gray-100 rounded-md transition-colors'
+              className='p-1.5 hover:bg-gray-100 rounded-md transition-colors'
             >
-              <X className='w-5 h-5' />
+              <X className='w-4 h-4' />
             </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className='p-4 overflow-y-auto h-[calc(100%-4rem)]'>
+        <div className='p-3 overflow-y-auto h-[calc(100%-3.5rem)]'>
           {/* New Filter Button */}
           <button
-            onClick={() => setNewFilterModal(true)}
-            className='w-full mb-4 px-4 py-2 bg-[#2774AE] text-white rounded-md hover:bg-blue-700 transition-colors'
+            onClick={() => {
+              setNewFilterModal(true);
+              setNewFilterCriteria({});
+            }}
+            className='w-full mb-3 px-3 py-2 bg-[#2774AE] text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors'
           >
             New Filter
           </button>
 
           {/* Loading state */}
           {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="text-lg">Loading filters...</div>
+            <div className="flex justify-center items-center h-32">
+              <div className="text-base">Loading filters...</div>
             </div>
           ) : (
-            /* Filter List with scroll if too long */
-            <div className='border border-gray-300 rounded-lg bg-gray-100 max-h-[80vh] overflow-y-auto'>
-              <table className='min-w-full divide-y divide-gray-200'>
-                <thead className='bg-gray-50'>
-                  <tr>
-                    <th className='w-[10%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Active</th>
-                    <th className='w-[70%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Filter Name</th>
-                    <th className='w-[20%] px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider'>Actions</th>
-                  </tr>
-                </thead>
-                <tbody className='bg-white divide-y divide-gray-200'>
+            /* Filter List */
+            <div className='border border-gray-300 rounded-lg bg-gray-100 max-h-[75vh] overflow-y-auto'>
+              {/* Optimized layout for 1/4 width */}
+              <div className='divide-y divide-gray-200'>
+                {/* Header */}
+                <div className='bg-gray-50 px-3 py-2'>
+                  <div className='grid grid-cols-12 gap-2 items-center text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                    <div className='col-span-2'>Active</div>
+                    <div className='col-span-10'>Filter Name</div>
+                  </div>
+                </div>
+                
+                {/* Filter rows */}
+                <div className='bg-white divide-y divide-gray-200'>
                   {filters.map((filter, index) => (
-                    <tr
+                    <div
                       key={filter.id}
+                      className={`cursor-pointer hover:bg-gray-50 px-3 py-3 ${filter.active ? 'bg-blue-50' : ''}`}
                       onClick={() => handleRadioChange(index)}
-                      className='cursor-pointer hover:bg-gray-50'
                     >
-                      <td className='px-6 py-4 whitespace-nowrap'>
-                        <input
-                          type='radio'
-                          name='activeFilter'
-                          checked={filter.id === props.activeFilterId}
-                          onChange={() => handleRadioChange(index)}
-                          className='h-5 w-5 accent-[#2774AE]'
-                        />
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap font-semibold text-gray-800'>
-                        {filter.name}
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap text-right'>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditFilterModal(filter);
-                            setEditFilterName(filter.name);
-                            
-                            const selections: { [key: string]: string[] } = {};
-                            Object.keys(data).forEach(category => {
-                              selections[category] = data[category].filter(option =>
-                                filter.activeFilters.includes(option)
-                              );
-                            });
-                            setEditFilterSelections(selections);
-                          }}
-                          className='px-2 py-1 mr-2 bg-white border border-gray-300 rounded-md hover:bg-gray-100'
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(index);
-                          }}
-                          className='px-2 py-1 mr-2 bg-white border border-gray-300 rounded-md hover:bg-gray-100'
-                        >
-                          Delete
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setModalFilter(filter);
-                          }}
-                          className='px-2 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors'
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
+                      {isFullScreen ? (
+                        /* Fullscreen mode: single row with inline buttons */
+                        <div className='grid grid-cols-12 gap-2 items-center'>
+                          <div className='col-span-1'>
+                            <input
+                              type='radio'
+                              checked={filter.active}
+                              onChange={() => handleRadioChange(index)}
+                              className='h-4 w-4 accent-blue-600'
+                            />
+                          </div>
+                          <div className='col-span-8'>
+                            <div className="text-sm font-medium text-gray-900 truncate" title={filter.name}>
+                              {filter.name}
+                            </div>
+                          </div>
+                          <div className='col-span-3 flex gap-2 justify-end'>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditFilterModal(filter);
+                                setEditFilterName(filter.name);
+                                setEditFilterCriteria(filter.criteria);
+                              }}
+                              className='px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors'
+                              title="Edit filter"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setModalFilter(filter);
+                              }}
+                              className='px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors'
+                              title="View filter details"
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(index);
+                              }}
+                              className='px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors'
+                              title="Delete filter"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Sidepanel mode: two rows with buttons below */
+                        <>
+                          {/* Main row with radio and name */}
+                          <div className='grid grid-cols-12 gap-2 items-center mb-2'>
+                            <div className='col-span-2'>
+                              <input
+                                type='radio'
+                                checked={filter.active}
+                                onChange={() => handleRadioChange(index)}
+                                className='h-4 w-4 accent-blue-600'
+                              />
+                            </div>
+                            <div className='col-span-10'>
+                              <div className="text-sm font-medium text-gray-900 truncate" title={filter.name}>
+                                {filter.name}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Action buttons row */}
+                          <div className='flex gap-2 justify-center'>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditFilterModal(filter);
+                                setEditFilterName(filter.name);
+                                setEditFilterCriteria(filter.criteria);
+                              }}
+                              className='flex-1 px-3 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors max-w-[80px]'
+                              title="Edit filter"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setModalFilter(filter);
+                              }}
+                              className='flex-1 px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors max-w-[80px]'
+                              title="View filter details"
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(index);
+                              }}
+                              className='flex-1 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors max-w-[80px]'
+                              title="Delete filter"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Modal Popup for Viewing a Filter's Selected Filters */}
+      {/* Modal Popup for Viewing a Filter's Criteria */}
       {modalFilter && (
         <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30' style={{ zIndex: 60 }}>
-          <div className='bg-white rounded-lg shadow-lg p-6 max-w-md w-full'>
+          <div className='bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4'>
             <div className='flex justify-between items-center mb-4'>
-              <h2 className='text-lg font-semibold'>{modalFilter.name} - Selected Filters</h2>
+              <h2 className='text-lg font-semibold'>{modalFilter.name} - Filter Criteria</h2>
               <button
                 onClick={() => setModalFilter(null)}
                 className='text-gray-600 hover:text-gray-800'
@@ -292,9 +470,9 @@ export default function Filter(props: FilterProps) {
               </button>
             </div>
             <div className='space-y-2'>
-              <div className='font-semibold text-gray-800'>Filters:</div>
+              <div className='font-semibold text-gray-800'>Applied Filters:</div>
               <div className='text-gray-600 text-sm'>
-                {modalFilter.activeFilters.join(', ')}
+                {formatCriteriaForDisplay(modalFilter.criteria)}
               </div>
             </div>
           </div>
@@ -302,9 +480,9 @@ export default function Filter(props: FilterProps) {
       )}
 
       {/* Modal Popup for Creating a New Filter */}
-      {newFilterModal && (
+      {newFilterModal && filterOptions && (
         <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30' style={{ zIndex: 60 }}>
-          <div className='bg-white rounded-lg shadow-lg p-6 max-w-md w-full overflow-y-auto max-h-[80vh]'>
+          <div className='bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full mx-4 overflow-y-auto max-h-[80vh]'>
             <div className='flex justify-between items-center mb-4'>
               <h2 className='text-lg font-semibold'>Create New Filter</h2>
               <button
@@ -314,6 +492,7 @@ export default function Filter(props: FilterProps) {
                 Close
               </button>
             </div>
+            
             <div className='mb-4'>
               <label className='block text-sm font-medium text-gray-700 mb-1'>Filter Name</label>
               <input
@@ -323,32 +502,13 @@ export default function Filter(props: FilterProps) {
                 className='w-full border border-gray-300 rounded p-2'
               />
             </div>
-            <div className='mb-4'>
-              {Object.keys(data).map(category => (
-                <div key={category} className='mb-2'>
-                  <div className='font-medium text-gray-800'>{category}</div>
-                  <div className='flex flex-wrap gap-2 mt-1'>
-                    {data[category].map((option: string) => (
-                      <label key={option} className='flex items-center space-x-1'>
-                        <input
-                          type='checkbox'
-                          checked={(newFilterSelections[category] || []).includes(option)}
-                          onChange={() => {
-                            const current = newFilterSelections[category] || [];
-                            const newSelection = current.includes(option)
-                              ? current.filter(o => o !== option)
-                              : [...current, option];
-                            setNewFilterSelections(prev => ({ ...prev, [category]: newSelection }));
-                          }}
-                          className='h-4 w-4 accent-blue-600'
-                        />
-                        <span className='text-sm'>{option}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            
+            <div className='mb-4 max-h-96 overflow-y-auto'>
+              {Object.entries(filterOptions).map(([categoryKey, categoryData]) =>
+                renderFilterSection(categoryKey, categoryData, newFilterCriteria, setNewFilterCriteria)
+              )}
             </div>
+            
             <div className='flex justify-end space-x-2'>
               <button
                 onClick={() => setNewFilterModal(false)}
@@ -358,17 +518,14 @@ export default function Filter(props: FilterProps) {
               </button>
               <button
                 onClick={() => {
-                  const selectedOptions = Object.values(newFilterSelections).flat();
                   if (newFilterName.trim()) {
-                    // create a new filter object
                     const newFilter: FilterItem = {
                       id: uuidv4(),
                       name: newFilterName,
                       active: false,
-                      activeFilters: selectedOptions
+                      criteria: newFilterCriteria
                     }
 
-                    // create a new filter within the backend
                     fetch('/api/filters', {
                       method: 'POST',
                       headers: {
@@ -381,13 +538,7 @@ export default function Filter(props: FilterProps) {
                     .then(data => {
                       setFilters(prev => [...prev, newFilter]);
                       setNewFilterName('');
-                      
-                      const resetSelections: { [key: string]: string[] } = {};
-                      Object.keys(data).forEach(category => {
-                        resetSelections[category] = [];
-                      });
-                      setNewFilterSelections(resetSelections);
-                      
+                      setNewFilterCriteria({});
                       setNewFilterModal(false);
                     })
                     .catch(error => {
@@ -395,7 +546,7 @@ export default function Filter(props: FilterProps) {
                     });
                   }
                 }}
-                className='px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors'
+                className='px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors'
               >
                 Create
               </button>
@@ -405,9 +556,9 @@ export default function Filter(props: FilterProps) {
       )}
 
       {/* Modal Popup for Editing a Filter */}
-      {editFilterModal && (
+      {editFilterModal && filterOptions && (
         <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30' style={{ zIndex: 60 }}>
-          <div className='bg-white rounded-lg shadow-lg p-6 max-w-md w-full overflow-y-auto max-h-[80vh]'>
+          <div className='bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full mx-4 overflow-y-auto max-h-[80vh]'>
             <div className='flex justify-between items-center mb-4'>
               <h2 className='text-lg font-semibold'>Edit Filter</h2>
               <button
@@ -417,6 +568,7 @@ export default function Filter(props: FilterProps) {
                 Close
               </button>
             </div>
+            
             <div className='mb-4'>
               <label className='block text-sm font-medium text-gray-700 mb-1'>Filter Name</label>
               <input
@@ -426,32 +578,13 @@ export default function Filter(props: FilterProps) {
                 className='w-full border border-gray-300 rounded p-2'
               />
             </div>
-            <div className='mb-4'>
-              {Object.keys(data).map(category => (
-                <div key={category} className='mb-2'>
-                  <div className='font-medium text-gray-800'>{category}</div>
-                  <div className='flex flex-wrap gap-2 mt-1'>
-                    {data[category].map((option: string) => (
-                      <label key={option} className='flex items-center space-x-1'>
-                        <input
-                          type='checkbox'
-                          checked={(editFilterSelections[category] || []).includes(option)}
-                          onChange={() => {
-                            const current = editFilterSelections[category] || [];
-                            const newSelection = current.includes(option)
-                              ? current.filter(o => o !== option)
-                              : [...current, option];
-                            setEditFilterSelections(prev => ({ ...prev, [category]: newSelection }));
-                          }}
-                          className='h-4 w-4 accent-blue-600'
-                        />
-                        <span className='text-sm'>{option}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            
+            <div className='mb-4 max-h-96 overflow-y-auto'>
+              {Object.entries(filterOptions).map(([categoryKey, categoryData]) =>
+                renderFilterSection(categoryKey, categoryData, editFilterCriteria, setEditFilterCriteria)
+              )}
             </div>
+            
             <div className='flex justify-end space-x-2'>
               <button
                 onClick={() => setEditFilterModal(null)}
@@ -461,9 +594,7 @@ export default function Filter(props: FilterProps) {
               </button>
               <button
                 onClick={() => {
-                  const selectedOptions = Object.values(editFilterSelections).flat();
-                  if (editFilterName.trim() && editFilterModal) {
-                    // Update the filter on the backend
+                  if (editFilterModal && editFilterName.trim()) {
                     fetch(`/api/filters/${editFilterModal.id}`, {
                       method: 'PUT',
                       headers: {
@@ -472,27 +603,26 @@ export default function Filter(props: FilterProps) {
                       },
                       body: JSON.stringify({
                         name: editFilterName,
-                        activeFilters: selectedOptions
+                        criteria: editFilterCriteria
                       })
                     })
                     .then(response => response.json())
                     .then(data => {
-                      // Update the local state
-                      setFilters(prev => prev.map(filter => 
-                        filter.id === editFilterModal.id 
-                          ? { ...filter, name: editFilterName, activeFilters: selectedOptions } 
-                          : filter
+                      setFilters(prev => prev.map(f => 
+                        f.id === editFilterModal.id 
+                          ? { ...f, name: editFilterName, criteria: editFilterCriteria }
+                          : f
                       ));
                       setEditFilterModal(null);
                     })
                     .catch(error => {
-                      console.error('Error updating filter:', error);
+                      console.error('error updating filter:', error);
                     });
                   }
                 }}
-                className='px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors'
+                className='px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors'
               >
-                Save
+                Update
               </button>
             </div>
           </div>

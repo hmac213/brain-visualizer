@@ -22,7 +22,7 @@ def home():
 app.config['CURRENT_FILTER'] = {
     'default_id': {
         'name': 'Default',
-        'options': []
+        'criteria': {}
     }
 }
 
