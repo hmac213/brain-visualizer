@@ -22,9 +22,10 @@ def home():
 app.config['CURRENT_FILTER'] = {
     'default_id': {
         'name': 'Default',
-        'options': []
+        'criteria': {}
     }
 }
+app.config['CURRENT_MASK_TYPE'] = 'tumor'  # Default mask type
 
 from blueprints.viewer import viewer
 from blueprints.filters import filters

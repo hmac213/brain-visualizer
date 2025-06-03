@@ -13,13 +13,24 @@ out_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../static_vi
 @viewer.route('/viewer')
 def req_visualize_brain():
     current_filter = current_app.config['CURRENT_FILTER']
+    current_mask_type = current_app.config.get('CURRENT_MASK_TYPE', 'tumor')  # Default to tumor
     current_filter_id = ''
     for id in current_filter:
         current_filter_id = id
     
-    # Use the Docker volume path for NIfTI files
+    # Map mask types to cache directories
+    cache_subdirs = {
+        'tumor': 'tumor_mask_cache',
+        'mri': 'mri_mask_cache', 
+        'dose': 'dose_mask_cache'
+    }
+    
+    cache_subdir = cache_subdirs.get(current_mask_type, 'tumor_mask_cache')
+    
+    # Use the Docker volume path for NIfTI files with mask type subdirectory
     nifti_file_path = os.path.join(
-        '/app/filestore/nifti_display_cache', 
+        '/app/filestore', 
+        cache_subdir,
         f"{current_filter_id}.nii.gz"
     )
     
@@ -27,8 +38,11 @@ def req_visualize_brain():
     current_nii_volume_data = current_nii[0]
     current_nii_volume = cortex.Volume(current_nii_volume_data, subject='S1', xfmname='fullhead')
 
-    cortex.webgl.make_static(outpath=out_path, data={ 'test': current_nii_volume }, recache=True, template='custom_viewer.html')
+    # Ensure the output directory exists
+    os.makedirs(out_path, exist_ok=True)
 
+    # Create the static viewer files
+    cortex.webgl.make_static(outpath=out_path, data={ 'test': current_nii_volume }, recache=True, template='custom_viewer.html')
     return send_from_directory(out_path, 'index.html')
 
 # serve files associated with viewer
