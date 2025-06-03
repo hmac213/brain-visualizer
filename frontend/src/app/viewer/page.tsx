@@ -95,14 +95,24 @@ export default function Viewer() {
               height: '100%',
               border: 'none',
               zIndex: 0,
-              marginTop: '64px'
+              marginTop: '64px',
+              transition: 'transform 0.3s ease-in-out',
+              transform: filterShowing ? 'translateX(25%)' : dataShowing ? 'translateX(25%)' : 'translateX(0)'
           }}
           title={`Pycortex WebGL Viewer`}
         />
       )}
 
       {activeViewType === 'glass' && (
-          <div style={{ gridArea: '1 / 1 / 2 / 2', width: '100%', height: 'calc(100% - 64px)', marginTop: '64px', zIndex: 0 }}>
+          <div style={{ 
+              gridArea: '1 / 1 / 2 / 2', 
+              width: '100%', 
+              height: 'calc(100% - 64px)', 
+              marginTop: '64px', 
+              zIndex: 0,
+              transition: 'transform 0.3s ease-in-out',
+              transform: filterShowing ? 'translateX(25%)' : dataShowing ? 'translateX(25%)' : 'translateX(0)'
+          }}>
               <GlassBrainViewer />
           </div>
       )}

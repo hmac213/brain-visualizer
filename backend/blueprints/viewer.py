@@ -27,8 +27,11 @@ def req_visualize_brain():
     current_nii_volume_data = current_nii[0]
     current_nii_volume = cortex.Volume(current_nii_volume_data, subject='S1', xfmname='fullhead')
 
-    cortex.webgl.make_static(outpath=out_path, data={ 'test': current_nii_volume }, recache=True, template='custom_viewer.html')
+    # Ensure the output directory exists
+    os.makedirs(out_path, exist_ok=True)
 
+    # Create the static viewer files
+    cortex.webgl.make_static(outpath=out_path, data={ 'test': current_nii_volume }, recache=True, template='custom_viewer.html')
     return send_from_directory(out_path, 'index.html')
 
 # serve files associated with viewer

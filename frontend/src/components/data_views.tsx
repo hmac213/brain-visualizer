@@ -55,19 +55,29 @@ export default function DataView(props: DataProps) {
 
   return props.dataShowing ? (
       <div
-        className='absolute inset-0 flex flex-col overflow-auto'
-        style={{ pointerEvents: 'auto' }}
-        onClick={(e) => { if(e.target === e.currentTarget) props.toggleData(false); }}
+        className={`fixed top-0 left-0 h-full bg-white shadow-lg transition-all duration-300 ease-in-out w-1/4`}
+        style={{ zIndex: 50, pointerEvents: 'auto' }}
       >
-        <div
-          className={`bg-white py-12 flex flex-col min-h-full w-full overflow-auto ${
-            isGridLayout ? 'px-24' : 'px-72'
-          }`}
-        >
-          <div className='flex justify-between items-center mb-6 border-b pb-4'>
-            <div className='flex space-x-3 items-center'>
-              <h1 className='text-2xl font-semibold'>Data Visualizations</h1>
-              <div className='border-l border-gray-300 h-4' />
+        <div className='bg-white h-full w-full overflow-hidden'>
+          {/* Header */}
+          <div className='flex justify-between items-center p-4 border-b'>
+            <h1 className='text-xl font-semibold'>Data Visualizations</h1>
+            <div className='flex items-center space-x-2'>
+              <button
+                onClick={() => props.toggleData(false)}
+                className='p-2 hover:bg-gray-100 rounded-md transition-colors'
+                title='Close'
+              >
+                <span className='sr-only'>Close</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Content area below header, same as Filter panel */}
+          <div className='p-4 overflow-y-auto h-[calc(100%-4rem)]'>
+            {/* Toolbar for grid/list toggle and New Chart button */}
+            <div className='flex items-center space-x-3 mb-4'>
               <button 
                 className={`px-4 py-2 transition-colors text-sm font-medium rounded-md ${
                   isGridLayout ? 'bg-[#2774AE] text-white' : 'hover:bg-[#2774AE] hover:text-white'
@@ -84,27 +94,19 @@ export default function DataView(props: DataProps) {
               >
                 <StretchHorizontal className='w-4 h-4' />
               </button>
-            </div>
-            <div className='flex space-x-2'>
               <button
                 onClick={() => setNewChartModal(true)}
-                className='px-4 py-2 bg-[#2774AE] text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium'
+                className='ml-auto px-4 py-2 bg-[#2774AE] text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium'
               >
                 New Chart
               </button>
-              <button
-                onClick={() => props.toggleData(false)}
-                className='px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors text-sm font-medium'
-              >
-                Close
-              </button>
             </div>
-          </div>
-          <div className='flex-1'>
+
+            {/* Charts Content */}
             {Object.keys(activeChartConfigs).length > 0 ? (
               <div className={`w-full h-full overflow-auto ${
                 isGridLayout 
-                  ? 'grid grid-cols-2 gap-6' 
+                  ? 'grid grid-cols-1 gap-6' 
                   : 'flex flex-col space-y-6'
               }`}>
                 {Object.entries(activeChartConfigs).map(([chartId, config]) => {
@@ -123,7 +125,6 @@ export default function DataView(props: DataProps) {
             )}
           </div>
         </div>
-        
         {/* New Chart Modal */}
         <NewChartModal
           isOpen={newChartModal}

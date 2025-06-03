@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from app import app, db
-from models import SampleData
 from db_loading.get_db_filter_ids import gen_display_nifti
 
 # Directory paths for Docker volumes - relative to the /app working directory

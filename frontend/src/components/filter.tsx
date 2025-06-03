@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { Maximize2, X } from 'lucide-react';
 
 // Remove the baseURL since we're using the proxy
 // const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -58,6 +59,8 @@ interface FilterProps {
 }
 
 export default function Filter(props: FilterProps) {
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  
   // Initialize state with placeholders but use useEffect to set real data
   const [filters, setFilters] = useState<FilterItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -157,116 +160,127 @@ export default function Filter(props: FilterProps) {
 
   return (
     <div
-      className='absolute inset-0 flex justify-center items-center'
-      style={{ pointerEvents: 'auto' }}
-      onClick={(e) => { if(e.target === e.currentTarget) props.toggleFilter(false); }}
+      className={`fixed top-0 left-0 h-full bg-white shadow-lg transition-all duration-300 ease-in-out ${
+        !isFullScreen ? 'w-1/4' : 'w-full'
+      }`}
+      style={{ zIndex: 50, pointerEvents: 'auto' }}
     >
-      <div
-        className='bg-white px-96 py-24 flex flex-col h-full w-full overflow-hidden'
-      >
+      <div className='bg-white h-full w-full overflow-hidden'>
         {/* Header with Title, New Filter button, and Close button */}
-        <div className='flex justify-between items-center mb-4'>
-          <h1 className='text-2xl font-bold'>Manage Filters</h1>
-          <div className='flex space-x-2'>
+        <div className='flex justify-between items-center p-4 border-b'>
+          <h1 className='text-xl font-semibold'>Filters</h1>
+          <div className='flex items-center space-x-2'>
             <button
-              onClick={() => setNewFilterModal(true)}
-              className='px-3 py-1 bg-[#2774AE] text-white rounded-md hover:bg-blue-700 transition-colors'
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              className='p-2 hover:bg-gray-100 rounded-md transition-colors'
+              title={isFullScreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
             >
-              New Filter
+              <Maximize2 className='w-5 h-5' />
             </button>
             <button
               onClick={() => props.toggleFilter(false)}
-              className='px-3 py-1 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition-colors'
+              className='p-2 hover:bg-gray-100 rounded-md transition-colors'
             >
-              Close
+              <X className='w-5 h-5' />
             </button>
           </div>
         </div>
-        
-        {/* Loading state */}
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="text-lg">Loading filters...</div>
-          </div>
-        ) : (
-          /* Filter List with scroll if too long */
-          <div className='border border-gray-300 rounded-lg bg-gray-100 max-h-[80vh] overflow-y-auto'>
-            <table className='min-w-full divide-y divide-gray-200'>
-              <thead className='bg-gray-50'>
-                <tr>
-                  <th className='w-[10%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Active</th>
-                  <th className='w-[70%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Filter Name</th>
-                  <th className='w-[20%] px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider'>Actions</th>
-                </tr>
-              </thead>
-              <tbody className='bg-white divide-y divide-gray-200'>
-                {filters.map((filter, index) => (
-                  <tr
-                    key={filter.id}
-                    onClick={() => handleRadioChange(index)}
-                    className='cursor-pointer hover:bg-gray-50'
-                  >
-                    <td className='px-6 py-4 whitespace-nowrap'>
-                      <input
-                        type='radio'
-                        name='activeFilter'
-                        checked={filter.id === props.activeFilterId}
-                        onChange={() => handleRadioChange(index)}
-                        className='h-5 w-5 accent-[#2774AE]'
-                      />
-                    </td>
-                    <td className='px-6 py-4 whitespace-nowrap font-semibold text-gray-800'>
-                      {filter.name}
-                    </td>
-                    <td className='px-6 py-4 whitespace-nowrap text-right'>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditFilterModal(filter);
-                          setEditFilterName(filter.name);
-                          
-                          const selections: { [key: string]: string[] } = {};
-                          Object.keys(data).forEach(category => {
-                            selections[category] = data[category].filter(option =>
-                              filter.activeFilters.includes(option)
-                            );
-                          });
-                          setEditFilterSelections(selections);
-                        }}
-                        className='px-2 py-1 mr-2 bg-white border border-gray-300 rounded-md hover:bg-gray-100'
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(index);
-                        }}
-                        className='px-2 py-1 mr-2 bg-white border border-gray-300 rounded-md hover:bg-gray-100'
-                      >
-                        Delete
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setModalFilter(filter);
-                        }}
-                        className='px-2 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors'
-                      >
-                        View
-                      </button>
-                    </td>
+
+        {/* Content */}
+        <div className='p-4 overflow-y-auto h-[calc(100%-4rem)]'>
+          {/* New Filter Button */}
+          <button
+            onClick={() => setNewFilterModal(true)}
+            className='w-full mb-4 px-4 py-2 bg-[#2774AE] text-white rounded-md hover:bg-blue-700 transition-colors'
+          >
+            New Filter
+          </button>
+
+          {/* Loading state */}
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="text-lg">Loading filters...</div>
+            </div>
+          ) : (
+            /* Filter List with scroll if too long */
+            <div className='border border-gray-300 rounded-lg bg-gray-100 max-h-[80vh] overflow-y-auto'>
+              <table className='min-w-full divide-y divide-gray-200'>
+                <thead className='bg-gray-50'>
+                  <tr>
+                    <th className='w-[10%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Active</th>
+                    <th className='w-[70%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Filter Name</th>
+                    <th className='w-[20%] px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider'>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody className='bg-white divide-y divide-gray-200'>
+                  {filters.map((filter, index) => (
+                    <tr
+                      key={filter.id}
+                      onClick={() => handleRadioChange(index)}
+                      className='cursor-pointer hover:bg-gray-50'
+                    >
+                      <td className='px-6 py-4 whitespace-nowrap'>
+                        <input
+                          type='radio'
+                          name='activeFilter'
+                          checked={filter.id === props.activeFilterId}
+                          onChange={() => handleRadioChange(index)}
+                          className='h-5 w-5 accent-[#2774AE]'
+                        />
+                      </td>
+                      <td className='px-6 py-4 whitespace-nowrap font-semibold text-gray-800'>
+                        {filter.name}
+                      </td>
+                      <td className='px-6 py-4 whitespace-nowrap text-right'>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditFilterModal(filter);
+                            setEditFilterName(filter.name);
+                            
+                            const selections: { [key: string]: string[] } = {};
+                            Object.keys(data).forEach(category => {
+                              selections[category] = data[category].filter(option =>
+                                filter.activeFilters.includes(option)
+                              );
+                            });
+                            setEditFilterSelections(selections);
+                          }}
+                          className='px-2 py-1 mr-2 bg-white border border-gray-300 rounded-md hover:bg-gray-100'
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(index);
+                          }}
+                          className='px-2 py-1 mr-2 bg-white border border-gray-300 rounded-md hover:bg-gray-100'
+                        >
+                          Delete
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setModalFilter(filter);
+                          }}
+                          className='px-2 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors'
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modal Popup for Viewing a Filter's Selected Filters */}
       {modalFilter && (
-        <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30'>
+        <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30' style={{ zIndex: 60 }}>
           <div className='bg-white rounded-lg shadow-lg p-6 max-w-md w-full'>
             <div className='flex justify-between items-center mb-4'>
               <h2 className='text-lg font-semibold'>{modalFilter.name} - Selected Filters</h2>
@@ -289,7 +303,7 @@ export default function Filter(props: FilterProps) {
 
       {/* Modal Popup for Creating a New Filter */}
       {newFilterModal && (
-        <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30'>
+        <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30' style={{ zIndex: 60 }}>
           <div className='bg-white rounded-lg shadow-lg p-6 max-w-md w-full overflow-y-auto max-h-[80vh]'>
             <div className='flex justify-between items-center mb-4'>
               <h2 className='text-lg font-semibold'>Create New Filter</h2>
@@ -392,7 +406,7 @@ export default function Filter(props: FilterProps) {
 
       {/* Modal Popup for Editing a Filter */}
       {editFilterModal && (
-        <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30'>
+        <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30' style={{ zIndex: 60 }}>
           <div className='bg-white rounded-lg shadow-lg p-6 max-w-md w-full overflow-y-auto max-h-[80vh]'>
             <div className='flex justify-between items-center mb-4'>
               <h2 className='text-lg font-semibold'>Edit Filter</h2>

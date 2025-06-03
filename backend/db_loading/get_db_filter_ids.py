@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from app import app, db
-from models import SampleData
 
 """
 origin_cancer: [
