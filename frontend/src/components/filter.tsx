@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Maximize2, X } from 'lucide-react';
+import { Maximize2, X, BarChart3, Loader2, Users, Brain, Stethoscope, Pill } from 'lucide-react';
 import { useResizable } from '../hooks/useResizable';
 
 // Types based on database models
@@ -66,6 +66,7 @@ interface FilterProps {
   onFilterChange: (filterId: string) => void;
   onWidthChange?: (width: number) => void;
   onFullScreenChange?: (isFullScreen: boolean) => void;
+  activeMaskType: string;
 }
 
 export default function Filter(props: FilterProps) {
@@ -97,6 +98,8 @@ export default function Filter(props: FilterProps) {
 
   // Modal states
   const [modalFilter, setModalFilter] = useState<FilterItem | null>(null);
+  const [modalStats, setModalStats] = useState<any>(null);
+  const [modalStatsLoading, setModalStatsLoading] = useState(false);
   const [newFilterModal, setNewFilterModal] = useState(false);
   const [newFilterName, setNewFilterName] = useState('');
   const [newFilterCriteria, setNewFilterCriteria] = useState<FilterCriteria>({});
@@ -292,6 +295,27 @@ export default function Filter(props: FilterProps) {
     });
   }, [props.activeFilterId]);
 
+  // Function to fetch statistics for a specific filter
+  const fetchFilterStatistics = async (filterId: string, criteria: FilterCriteria) => {
+    setModalStatsLoading(true);
+    try {
+      const response = await fetch(`/api/filter-statistics/${filterId}?maskType=${props.activeMaskType}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      setModalStats(data);
+    } catch (err) {
+      console.error('Error fetching filter statistics:', err);
+      setModalStats({ error: err instanceof Error ? err.message : 'Failed to fetch statistics' });
+    } finally {
+      setModalStatsLoading(false);
+    }
+  };
+
   if (!props.filterShowing) {
     return null;
   }
@@ -407,6 +431,7 @@ export default function Filter(props: FilterProps) {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setModalFilter(filter);
+                                fetchFilterStatistics(filter.id, filter.criteria);
                               }}
                               className='px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors'
                               title="View filter details"
@@ -463,6 +488,7 @@ export default function Filter(props: FilterProps) {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setModalFilter(filter);
+                                fetchFilterStatistics(filter.id, filter.criteria);
                               }}
                               className={`${width > 20 ? 'flex-1 max-w-[80px]' : 'px-2'} py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors`}
                               title="View filter details"
@@ -494,21 +520,147 @@ export default function Filter(props: FilterProps) {
       {/* Modal Popup for Viewing a Filter's Criteria */}
       {modalFilter && (
         <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30' style={{ zIndex: 60 }}>
-          <div className='bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4'>
-            <div className='flex justify-between items-center mb-4'>
-              <h2 className='text-lg font-semibold'>{modalFilter.name} - Filter Criteria</h2>
+          <div className='bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto'>
+            <div className='flex justify-between items-center mb-6'>
+              <h2 className='text-xl font-semibold text-gray-900'>{modalFilter.name}</h2>
               <button
-                onClick={() => setModalFilter(null)}
-                className='text-gray-600 hover:text-gray-800'
+                onClick={() => {
+                  setModalFilter(null);
+                  setModalStats(null);
+                }}
+                className='text-gray-600 hover:text-gray-800 p-1'
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Filter Statistics Section */}
+            <div className='mb-6'>
+              <div className='flex items-center gap-2 mb-4'>
+                <BarChart3 className="w-5 h-5 text-[#2774AE]" />
+                <h3 className='text-lg font-semibold text-gray-800'>Filter Impact</h3>
+              </div>
+
+              {modalStatsLoading && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#2774AE]" />
+                  <span className="ml-3 text-gray-600">Loading statistics...</span>
+                </div>
+              )}
+
+              {modalStats && !modalStatsLoading && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  {modalStats.error ? (
+                    <div className="text-red-600 text-sm">
+                      Error loading statistics: {modalStats.error}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Total Patients */}
+                        <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                          <Users className="w-6 h-6 text-blue-600" />
+                          <div>
+                            <div className="text-2xl font-bold text-blue-800">
+                              {modalStats.total_patients?.toLocaleString() || '0'}
+                            </div>
+                            <div className="text-sm text-blue-600">Total Patients</div>
+                          </div>
+                        </div>
+
+                        {/* Current Mask Type (highlighted) */}
+                        <div className={`flex items-center gap-3 p-3 rounded-lg ${
+                          modalStats.current_mask_type === 'tumor' ? 'bg-green-50' :
+                          modalStats.current_mask_type === 'mri' ? 'bg-purple-50' : 'bg-orange-50'
+                        }`}>
+                          {modalStats.current_mask_type === 'tumor' && <Brain className="w-6 h-6 text-green-600" />}
+                          {modalStats.current_mask_type === 'mri' && <Stethoscope className="w-6 h-6 text-purple-600" />}
+                          {modalStats.current_mask_type === 'dose' && <Pill className="w-6 h-6 text-orange-600" />}
+                          <div>
+                            <div className={`text-2xl font-bold ${
+                              modalStats.current_mask_type === 'tumor' ? 'text-green-800' :
+                              modalStats.current_mask_type === 'mri' ? 'text-purple-800' : 'text-orange-800'
+                            }`}>
+                              {modalStats.current_mask_count?.toLocaleString() || '0'}
+                            </div>
+                            <div className={`text-sm ${
+                              modalStats.current_mask_type === 'tumor' ? 'text-green-600' :
+                              modalStats.current_mask_type === 'mri' ? 'text-purple-600' : 'text-orange-600'
+                            }`}>
+                              {modalStats.current_mask_type === 'tumor' ? 'Tumors' :
+                               modalStats.current_mask_type === 'mri' ? 'MRI Scans' : 'Dose Masks'} (Active)
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Other Data Types */}
+                        {modalStats.current_mask_type !== 'tumor' && (
+                          <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-lg">
+                            <Brain className="w-6 h-6 text-gray-500" />
+                            <div>
+                              <div className="text-xl font-semibold text-gray-700">
+                                {modalStats.total_tumors?.toLocaleString() || '0'}
+                              </div>
+                              <div className="text-sm text-gray-600">Tumor Masks</div>
+                            </div>
+                          </div>
+                        )}
+
+                        {modalStats.current_mask_type !== 'mri' && (
+                          <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-lg">
+                            <Stethoscope className="w-6 h-6 text-gray-500" />
+                            <div>
+                              <div className="text-xl font-semibold text-gray-700">
+                                {modalStats.total_mris?.toLocaleString() || '0'}
+                              </div>
+                              <div className="text-sm text-gray-600">MRI Scans</div>
+                            </div>
+                          </div>
+                        )}
+
+                        {modalStats.current_mask_type !== 'dose' && (
+                          <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-lg">
+                            <Pill className="w-6 h-6 text-gray-500" />
+                            <div>
+                              <div className="text-xl font-semibold text-gray-700">
+                                {modalStats.total_dose_masks?.toLocaleString() || '0'}
+                              </div>
+                              <div className="text-sm text-gray-600">Dose Masks</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 text-xs text-gray-500 text-center">
+                        Statistics based on current mask type: {modalStats.current_mask_type}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Filter Criteria Section */}
+            <div>
+              <h3 className='text-lg font-semibold text-gray-800 mb-3'>Applied Filters</h3>
+              <div className='bg-gray-50 rounded-lg p-4'>
+                <div className='text-gray-700 text-sm leading-relaxed'>
+                  {formatCriteriaForDisplay(modalFilter.criteria)}
+                </div>
+              </div>
+            </div>
+
+            {/* Close Button */}
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => {
+                  setModalFilter(null);
+                  setModalStats(null);
+                }}
+                className='px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition-colors'
               >
                 Close
               </button>
-            </div>
-            <div className='space-y-2'>
-              <div className='font-semibold text-gray-800'>Applied Filters:</div>
-              <div className='text-gray-600 text-sm'>
-                {formatCriteriaForDisplay(modalFilter.criteria)}
-              </div>
             </div>
           </div>
         </div>

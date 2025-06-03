@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, current_app
 import os
 import sys
-from db_loading.generate_display_nifti import generate_display_nifti
+from db_loading.generate_display_nifti import generate_display_nifti, get_filtered_tumor_ids, get_filtered_mri_ids, get_filtered_dose_ids
 from models import Patients, TumorMask, DoseMask, MRIMask, NiftiData
 from app import db
 from sqlalchemy import func, distinct
@@ -126,10 +126,117 @@ def get_filter_options():
         print(f"Error getting filter options: {e}")
         return {}
 
+def get_filter_statistics(criteria, mask_type='tumor'):
+    """Calculate statistics based on current filter criteria."""
+    try:
+        # Get filtered IDs for each mask type
+        tumor_ids = get_filtered_tumor_ids(criteria)
+        mri_ids = get_filtered_mri_ids(criteria)
+        dose_ids = get_filtered_dose_ids(criteria)
+        
+        # Get unique patient IDs from each mask type
+        tumor_patient_ids = set()
+        mri_patient_ids = set()
+        dose_patient_ids = set()
+        
+        if tumor_ids:
+            tumor_patients = db.session.query(distinct(NiftiData.patient_id)).join(
+                TumorMask, TumorMask.id == NiftiData.id
+            ).filter(TumorMask.id.in_(tumor_ids)).all()
+            tumor_patient_ids = {p[0] for p in tumor_patients}
+        
+        if mri_ids:
+            mri_patients = db.session.query(distinct(NiftiData.patient_id)).join(
+                MRIMask, MRIMask.id == NiftiData.id
+            ).filter(MRIMask.id.in_(mri_ids)).all()
+            mri_patient_ids = {p[0] for p in mri_patients}
+        
+        if dose_ids:
+            dose_patients = db.session.query(distinct(NiftiData.patient_id)).join(
+                DoseMask, DoseMask.id == NiftiData.id
+            ).filter(DoseMask.id.in_(dose_ids)).all()
+            dose_patient_ids = {p[0] for p in dose_patients}
+        
+        # Calculate total unique patients across all mask types
+        all_patient_ids = tumor_patient_ids.union(mri_patient_ids).union(dose_patient_ids)
+        
+        return {
+            'total_patients': len(all_patient_ids),
+            'total_tumors': len(tumor_ids) if tumor_ids else 0,
+            'total_mris': len(mri_ids) if mri_ids else 0,
+            'total_dose_masks': len(dose_ids) if dose_ids else 0,
+            'current_mask_type': mask_type,
+            'current_mask_count': {
+                'tumor': len(tumor_ids) if tumor_ids else 0,
+                'mri': len(mri_ids) if mri_ids else 0,
+                'dose': len(dose_ids) if dose_ids else 0
+            }.get(mask_type, 0)
+        }
+        
+    except Exception as e:
+        print(f"Error calculating filter statistics: {e}")
+        return {
+            'total_patients': 0,
+            'total_tumors': 0,
+            'total_mris': 0,
+            'total_dose_masks': 0,
+            'current_mask_type': mask_type,
+            'current_mask_count': 0,
+            'error': str(e)
+        }
+
 # Get available filter options
 @filters.route('/filter-options', methods=['GET'])
 def get_filter_options_endpoint():
     return jsonify(get_filter_options())
+
+# Get filter statistics for current or specified filter
+@filters.route('/filter-statistics', methods=['GET'])
+@filters.route('/filter-statistics/<filter_id>', methods=['GET'])
+def get_filter_statistics_endpoint(filter_id=None):
+    """Get statistics for the current filter or a specific filter."""
+    try:
+        # Get mask type from query parameter
+        mask_type = request.args.get('maskType', current_app.config.get('CURRENT_MASK_TYPE', 'tumor'))
+        
+        if filter_id:
+            # Get statistics for specific filter
+            if filter_id in active_filters:
+                criteria = active_filters[filter_id]['criteria']
+                stats = get_filter_statistics(criteria, mask_type)
+                stats['filter_id'] = filter_id
+                stats['filter_name'] = active_filters[filter_id]['name']
+                return jsonify(stats)
+            else:
+                return jsonify({'error': 'Filter not found'}), 404
+        else:
+            # Get statistics for current filter
+            current_filter = current_app.config.get('CURRENT_FILTER', {})
+            current_mask_type = current_app.config.get('CURRENT_MASK_TYPE', 'tumor')
+            
+            if current_filter:
+                filter_id = list(current_filter.keys())[0]
+                criteria = current_filter[filter_id]['criteria']
+                stats = get_filter_statistics(criteria, current_mask_type)
+                stats['filter_id'] = filter_id
+                stats['filter_name'] = current_filter[filter_id]['name']
+                return jsonify(stats)
+            else:
+                # No current filter, return empty statistics
+                return jsonify({
+                    'total_patients': 0,
+                    'total_tumors': 0,
+                    'total_mris': 0,
+                    'total_dose_masks': 0,
+                    'current_mask_type': current_mask_type,
+                    'current_mask_count': 0,
+                    'filter_id': None,
+                    'filter_name': 'No Filter Active'
+                })
+                
+    except Exception as e:
+        print(f"Error getting filter statistics: {e}")
+        return jsonify({'error': f'Failed to get statistics: {str(e)}'}), 500
 
 # get all active filters
 @filters.route('/filters', methods=['GET'])

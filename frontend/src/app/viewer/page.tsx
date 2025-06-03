@@ -243,6 +243,7 @@ export default function Viewer() {
           onFilterChange={handleFilterChange}
           onWidthChange={setFilterWidth}
           onFullScreenChange={setIsFilterFullScreen}
+          activeMaskType={activeMaskType}
         />
         <DataView 
           dataShowing={dataShowing} 
