@@ -148,9 +148,10 @@ def create_filter():
 
     active_filters[id] = { 'name': name, 'criteria': criteria }
     
-    # Generate the NIfTI file using the new criteria format
+    # Generate the NIfTI file using the new criteria format and current mask type
     try:
-        result_path = generate_display_nifti(id, criteria)
+        current_mask_type = current_app.config.get('CURRENT_MASK_TYPE', 'tumor')
+        result_path = generate_display_nifti(id, criteria, current_mask_type)
         
         if result_path:
             print(f"Successfully created NIfTI file at {result_path}")
@@ -172,13 +173,18 @@ def modify_filter(id):
     if id in active_filters:
         active_filters[id] = { 'name': name, 'criteria': criteria }
         
-        # Regenerate the NIfTI file with updated criteria
+        # Regenerate the NIfTI file with updated criteria and current mask type
         try:
-            cache_path = os.path.join('/app/filestore/nifti_display_cache', f"{id}.nii.gz")
-            if os.path.exists(cache_path):
-                os.remove(cache_path)
-                
-            result_path = generate_display_nifti(id, criteria)
+            current_mask_type = current_app.config.get('CURRENT_MASK_TYPE', 'tumor')
+            
+            # Remove all mask type cache files for this filter
+            cache_dirs = ['tumor_mask_cache', 'mri_mask_cache', 'dose_mask_cache']
+            for cache_dir in cache_dirs:
+                cache_path = os.path.join('/app/filestore', cache_dir, f"{id}.nii.gz")
+                if os.path.exists(cache_path):
+                    os.remove(cache_path)
+                    
+            result_path = generate_display_nifti(id, criteria, current_mask_type)
             
             if result_path:
                 print(f"Successfully updated NIfTI file at {result_path}")
@@ -199,12 +205,14 @@ def delete_filter(id):
     if id in active_filters:
         del active_filters[id]
         
-        # Clean up associated NIfTI files
+        # Clean up associated NIfTI files from all mask type caches
         try:
-            cache_path = os.path.join('/app/filestore/nifti_display_cache', f"{id}.nii.gz")
-            if os.path.exists(cache_path):
-                os.remove(cache_path)
-                print(f"Removed cached NIfTI file: {cache_path}")
+            cache_dirs = ['tumor_mask_cache', 'mri_mask_cache', 'dose_mask_cache']
+            for cache_dir in cache_dirs:
+                cache_path = os.path.join('/app/filestore', cache_dir, f"{id}.nii.gz")
+                if os.path.exists(cache_path):
+                    os.remove(cache_path)
+                    print(f"Removed cached NIfTI file: {cache_path}")
         except Exception as e:
             print(f"Error cleaning up NIfTI files: {e}")
             
@@ -215,13 +223,66 @@ def delete_filter(id):
 # set current filter
 @filters.route('/filters/set_current/<id>', methods=['PUT'])
 def set_current_filter(id):
-    if id in active_filters:
-        if id in current_app.config['CURRENT_FILTER']:
-            return jsonify({ 'message': 'filter already active' }), 200
-        current_app.config['CURRENT_FILTER'] = { id: active_filters[id] }
-        return jsonify({ 'message': 'successfully updated current filter' }), 200
-    
-    return jsonify({ 'error': 'filter not found' }), 404
+    try:
+        mask_type = request.args.get('maskType', 'tumor')  # Default to tumor masks
+        print(f"set_current_filter called with id: {id}, maskType: {mask_type}")
+        
+        if id in active_filters:
+            current_filter_config = current_app.config.get('CURRENT_FILTER', {})
+            current_mask_type = current_app.config.get('CURRENT_MASK_TYPE')
+            
+            print(f"Current filter config: {current_filter_config}")
+            print(f"Current mask type: {current_mask_type}")
+            
+            if id in current_filter_config and current_mask_type == mask_type:
+                print(f"Filter {id} with mask type {mask_type} already active")
+                return jsonify({ 'message': 'filter already active' }), 200
+            
+            current_app.config['CURRENT_FILTER'] = { id: active_filters[id] }
+            current_app.config['CURRENT_MASK_TYPE'] = mask_type
+            print(f"Updated current filter to {id} with mask type {mask_type}")
+            
+            # Generate NIfTI file for this mask type if it doesn't exist
+            try:
+                cache_subdirs = {
+                    'tumor': 'tumor_mask_cache',
+                    'mri': 'mri_mask_cache', 
+                    'dose': 'dose_mask_cache'
+                }
+                cache_subdir = cache_subdirs.get(mask_type, 'tumor_mask_cache')
+                cache_path = os.path.join('/app/filestore', cache_subdir, f"{id}.nii.gz")
+                
+                print(f"Checking cache path: {cache_path}")
+                
+                if not os.path.exists(cache_path):
+                    print(f"Generating {mask_type} mask for filter {id}")
+                    criteria = active_filters[id]['criteria']
+                    result_path = generate_display_nifti(id, criteria, mask_type)
+                    
+                    if result_path:
+                        print(f"Successfully generated {mask_type} mask at {result_path}")
+                    else:
+                        print(f"Failed to generate {mask_type} mask for filter {id}")
+                        return jsonify({ 'error': f'Failed to generate {mask_type} mask' }), 500
+                else:
+                    print(f"{mask_type.title()} mask already exists for filter {id}")
+                    
+            except Exception as e:
+                print(f"Error generating {mask_type} mask: {e}")
+                import traceback
+                traceback.print_exc()
+                return jsonify({ 'error': f'Error generating {mask_type} mask: {str(e)}' }), 500
+            
+            return jsonify({ 'message': 'successfully updated current filter' }), 200
+        
+        print(f"Filter {id} not found in active_filters")
+        return jsonify({ 'error': 'filter not found' }), 404
+        
+    except Exception as e:
+        print(f"Unexpected error in set_current_filter: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({ 'error': f'Internal server error: {str(e)}' }), 500
 
 # get current filter
 @filters.route('/filters/get_current', methods=['GET'])

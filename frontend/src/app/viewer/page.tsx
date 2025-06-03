@@ -23,6 +23,8 @@ export default function Viewer() {
   const [isDataFullScreen, setIsDataFullScreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [activeViewType, setActiveViewType] = useState<string>('surface');
+  const [activeMaskType, setActiveMaskType] = useState<string>('tumor');
+  const [isMaskTypeChanging, setIsMaskTypeChanging] = useState<boolean>(false);
   const [isClient, setIsClient] = useState(false);
 
   // Set isClient to true when component mounts - avoid hydration mismatch
@@ -47,17 +49,22 @@ export default function Viewer() {
       });
   }, []);
 
-  const handleFilterChange = async (newFilterId: string) => {
-    if (newFilterId === activeFilterId) {
+  const handleFilterChange = async (newFilterId: string, maskType?: string) => {
+    if (newFilterId === activeFilterId && (!maskType || maskType === activeMaskType)) {
         console.log("Filter already active:", newFilterId);
         return;
     }
 
-    console.log("Attempting to set active filter to:", newFilterId);
+    console.log("Attempting to set active filter to:", newFilterId, "with mask type:", maskType || activeMaskType);
     setActiveFilterId(newFilterId);
+    
+    // Update mask type if provided
+    if (maskType) {
+      setActiveMaskType(maskType);
+    }
 
     try {
-        const response = await fetch(`/api/filters/set_current/${newFilterId}`, {
+        const response = await fetch(`/api/filters/set_current/${newFilterId}?maskType=${maskType || activeMaskType}`, {
             method: 'PUT',
             headers: {
                 'Accept': 'application/json'
@@ -79,6 +86,36 @@ export default function Viewer() {
 
     } catch (error) {
         console.error('Error updating current filter:', error);
+    }
+  };
+
+  // Handle mask type changes
+  const handleMaskTypeChange = async (newMaskType: string) => {
+    console.log("handleMaskTypeChange called with:", newMaskType);
+    console.log("Current activeMaskType:", activeMaskType);
+    
+    if (newMaskType !== activeMaskType && !isMaskTypeChanging) {
+      console.log("Changing mask type to:", newMaskType);
+      setIsMaskTypeChanging(true);
+      setActiveMaskType(newMaskType);
+      
+      try {
+        // If there's an active filter, reload with new mask type
+        if (activeFilterId) {
+          console.log("Reloading active filter with new mask type:", activeFilterId);
+          await handleFilterChange(activeFilterId, newMaskType);
+        } else {
+          console.log("No active filter to reload");
+        }
+      } catch (error) {
+        console.error("Error changing mask type:", error);
+      } finally {
+        setIsMaskTypeChanging(false);
+      }
+    } else if (isMaskTypeChanging) {
+      console.log("Mask type change already in progress, ignoring click");
+    } else {
+      console.log("Mask type already active, no change needed");
     }
   };
 
@@ -159,6 +196,9 @@ export default function Viewer() {
           onDataToggle={toggleData}
           activeViewType={activeViewType}
           onViewTypeChange={setActiveViewType}
+          activeMaskType={activeMaskType}
+          onMaskTypeChange={handleMaskTypeChange}
+          isMaskTypeChanging={isMaskTypeChanging}
         />
       )}
 

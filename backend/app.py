@@ -25,6 +25,7 @@ app.config['CURRENT_FILTER'] = {
         'criteria': {}
     }
 }
+app.config['CURRENT_MASK_TYPE'] = 'tumor'  # Default mask type
 
 from blueprints.viewer import viewer
 from blueprints.filters import filters

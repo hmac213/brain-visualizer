@@ -3,16 +3,19 @@ import uuid
 import numpy as np
 import nibabel as nib
 from scipy.ndimage import gaussian_filter
-from datetime import date
+from datetime import date, timedelta
 
 from dotenv import load_dotenv
 load_dotenv()
 
 from app import app, db
-from models import Patients, TumorMask, NiftiData, DoseMask
+from models import Patients, TumorMask, NiftiData, DoseMask, MRIMask
 
 # Directory paths for Docker volumes - relative to the /app working directory
 INPUT_DIR = '/app/filestore/test_db_nifti'
+TUMOR_CACHE_DIR = '/app/filestore/tumor_mask_cache'
+MRI_CACHE_DIR = '/app/filestore/mri_mask_cache'
+DOSE_CACHE_DIR = '/app/filestore/dose_mask_cache'
 OUT_DIR = '/app/filestore/nifti_display_cache'
 
 def get_filtered_tumor_ids(criteria):
@@ -202,47 +205,257 @@ def get_filtered_tumor_ids(criteria):
         print(f"Error in filtering: {e}")
         return []
 
-def generate_display_nifti(filter_id, criteria):
+def get_filtered_mri_ids(criteria):
     """
-    Generate a display NIfTI file by averaging all the tumor NIfTI files
+    Query the database and return MRI IDs that match the filter criteria.
+    
+    Args:
+        criteria (dict): Structured filter criteria based on database models
+    
+    Returns:
+        List of MRI mask IDs that match the filter criteria
+    """
+    try:
+        # Join patients and MRI masks
+        query = db.session.query(MRIMask.id).join(
+            NiftiData, MRIMask.id == NiftiData.id
+        ).join(
+            Patients, NiftiData.patient_id == Patients.id
+        ).filter(
+            NiftiData.series_type == 'mri_mask'
+        )
+        
+        # Apply patient demographic filters
+        if criteria.get('patient_demographics'):
+            demographics = criteria['patient_demographics']
+            
+            # Origin cancer filter
+            if demographics.get('origin_cancer'):
+                cancers = [item if isinstance(item, str) else item['label'] for item in demographics['origin_cancer']]
+                query = query.filter(Patients.origin_cancer.in_(cancers))
+            
+            # Sex filter
+            if demographics.get('sex'):
+                sexes = [item if isinstance(item, str) else item['label'] for item in demographics['sex']]
+                query = query.filter(Patients.sex.in_(sexes))
+            
+            # Age range filter
+            if demographics.get('age_range'):
+                age_filters = []
+                for age_range in demographics['age_range']:
+                    if isinstance(age_range, dict):
+                        min_age = age_range.get('min', 0)
+                        max_age = age_range.get('max', 150)
+                        current_date = date.today()
+                        min_birth_date = current_date - timedelta(days=(max_age + 1) * 365.25)
+                        max_birth_date = current_date - timedelta(days=min_age * 365.25)
+                        age_filters.append(
+                            Patients.dob.between(min_birth_date, max_birth_date)
+                        )
+                if age_filters:
+                    query = query.filter(db.or_(*age_filters))
+            
+            # Height range filter
+            if demographics.get('height_range'):
+                height_filters = []
+                for height_range in demographics['height_range']:
+                    if isinstance(height_range, dict):
+                        min_height = height_range.get('min', 0)
+                        max_height = height_range.get('max', 250)
+                        height_filters.append(
+                            Patients.height_cm.between(min_height, max_height)
+                        )
+                if height_filters:
+                    query = query.filter(db.or_(*height_filters))
+            
+            # Weight range filter
+            if demographics.get('weight_range'):
+                weight_filters = []
+                for weight_range in demographics['weight_range']:
+                    if isinstance(weight_range, dict):
+                        min_weight = weight_range.get('min', 0)
+                        max_weight = weight_range.get('max', 200)
+                        weight_filters.append(
+                            Patients.weight_kg.between(min_weight, max_weight)
+                        )
+                if weight_filters:
+                    query = query.filter(db.or_(*weight_filters))
+            
+            # Tumor count range filter
+            if demographics.get('tumor_count_range'):
+                count_filters = []
+                for count_range in demographics['tumor_count_range']:
+                    if isinstance(count_range, dict):
+                        min_count = count_range.get('min', 1)
+                        max_count = count_range.get('max', 5)
+                        count_filters.append(
+                            Patients.tumor_count.between(min_count, max_count)
+                        )
+                if count_filters:
+                    query = query.filter(db.or_(*count_filters))
+        
+        # Apply clinical data filters
+        if criteria.get('clinical_data'):
+            clinical = criteria['clinical_data']
+            
+            # Systolic BP filter
+            if clinical.get('systolic_bp_range'):
+                bp_filters = []
+                for bp_range in clinical['systolic_bp_range']:
+                    if isinstance(bp_range, dict):
+                        min_bp = bp_range.get('min', 0)
+                        max_bp = bp_range.get('max', 300)
+                        bp_filters.append(
+                            Patients.systolic_bp.between(min_bp, max_bp)
+                        )
+                if bp_filters:
+                    query = query.filter(db.or_(*bp_filters))
+            
+            # Diastolic BP filter
+            if clinical.get('diastolic_bp_range'):
+                bp_filters = []
+                for bp_range in clinical['diastolic_bp_range']:
+                    if isinstance(bp_range, dict):
+                        min_bp = bp_range.get('min', 0)
+                        max_bp = bp_range.get('max', 200)
+                        bp_filters.append(
+                            Patients.diastolic_bp.between(min_bp, max_bp)
+                        )
+                if bp_filters:
+                    query = query.filter(db.or_(*bp_filters))
+        
+        # Execute query and return IDs
+        results = query.all()
+        return [str(result.id) for result in results]
+        
+    except Exception as e:
+        print(f"Error in filtering MRI masks: {e}")
+        return []
+
+def get_filtered_dose_ids(criteria):
+    """
+    Query the database and return dose IDs that match the filter criteria.
+    
+    Args:
+        criteria (dict): Structured filter criteria based on database models
+    
+    Returns:
+        List of dose mask IDs that match the filter criteria
+    """
+    try:
+        # Join patients and dose masks
+        query = db.session.query(DoseMask.id).join(
+            NiftiData, DoseMask.id == NiftiData.id
+        ).join(
+            Patients, NiftiData.patient_id == Patients.id
+        ).filter(
+            NiftiData.series_type == 'dose_mask'
+        )
+        
+        # Apply patient demographic filters (same as above but abbreviated for dose masks)
+        if criteria.get('patient_demographics'):
+            demographics = criteria['patient_demographics']
+            
+            if demographics.get('origin_cancer'):
+                cancers = [item if isinstance(item, str) else item['label'] for item in demographics['origin_cancer']]
+                query = query.filter(Patients.origin_cancer.in_(cancers))
+            
+            if demographics.get('sex'):
+                sexes = [item if isinstance(item, str) else item['label'] for item in demographics['sex']]
+                query = query.filter(Patients.sex.in_(sexes))
+        
+        # Apply treatment data filters specific to dose masks
+        if criteria.get('treatment_data'):
+            treatment = criteria['treatment_data']
+            
+            # Dose range filter
+            if treatment.get('dose_range'):
+                dose_filters = []
+                for dose_range in treatment['dose_range']:
+                    if isinstance(dose_range, dict):
+                        min_dose = dose_range.get('min', 0)
+                        max_dose = dose_range.get('max', 70)
+                        dose_filters.append(
+                            DoseMask.max_dose.between(min_dose, max_dose)
+                        )
+                if dose_filters:
+                    query = query.filter(db.or_(*dose_filters))
+        
+        # Execute query and return IDs
+        results = query.all()
+        return [str(result.id) for result in results]
+        
+    except Exception as e:
+        print(f"Error in filtering dose masks: {e}")
+        return []
+
+def generate_display_nifti(filter_id, criteria, mask_type='tumor'):
+    """
+    Generate a display NIfTI file by averaging all the mask NIfTI files
     that correspond to the IDs matching the filter criteria.
     
     Args:
         filter_id (str): Unique ID for this filter combination, used to name the output file
         criteria (dict): Structured filter criteria based on database models
+        mask_type (str): Type of mask to generate ('tumor', 'mri', or 'dose')
     
     Returns:
         str: Path to the generated NIfTI file
     """
+    # Map mask types to cache directories and query functions
+    mask_config = {
+        'tumor': {
+            'cache_dir': TUMOR_CACHE_DIR,
+            'query_func': get_filtered_tumor_ids,
+            'description': 'tumor'
+        },
+        'mri': {
+            'cache_dir': MRI_CACHE_DIR,
+            'query_func': get_filtered_mri_ids,
+            'description': 'MRI'
+        },
+        'dose': {
+            'cache_dir': DOSE_CACHE_DIR,
+            'query_func': get_filtered_dose_ids,
+            'description': 'dose'
+        }
+    }
+    
+    config = mask_config.get(mask_type, mask_config['tumor'])
+    cache_dir = config['cache_dir']
+    query_func = config['query_func']
+    description = config['description']
+    
     # Make sure output directory exists
-    os.makedirs(OUT_DIR, exist_ok=True)
+    os.makedirs(cache_dir, exist_ok=True)
     
     # Generate output file path
-    out_path = os.path.join(OUT_DIR, f"{filter_id}.nii.gz")
+    out_path = os.path.join(cache_dir, f"{filter_id}.nii.gz")
     
     # Check if this filter has already been processed
     if os.path.exists(out_path):
-        print(f"Display NIfTI already exists for filter {filter_id}")
+        print(f"Display NIfTI already exists for filter {filter_id} ({mask_type})")
         return out_path
     
-    # Use the filter function to get list of tumor IDs that match the criteria
+    # Use the appropriate filter function to get list of mask IDs that match the criteria
     with app.app_context():
-        id_list = get_filtered_tumor_ids(criteria)
+        id_list = query_func(criteria)
         
     if not id_list:
-        print(f"No matching tumor records found for the filter criteria")
+        print(f"No matching {description} records found for the filter criteria")
         return None
     
+    print(f"Processing {len(id_list)} {description} files...")
+    
     # Keep track of successful loads
-    loaded_volumes = []
     first_affine = None
     
-    # Load and accumulate all the tumor NIfTI volumes
-    for tumor_id in id_list:
-        nifti_path = os.path.join(INPUT_DIR, f"{tumor_id}.nii.gz")
+    # Load and accumulate all the mask NIfTI volumes
+    for i, mask_id in enumerate(id_list):
+        nifti_path = os.path.join(INPUT_DIR, f"{mask_id}.nii.gz")
         
         if not os.path.exists(nifti_path):
-            print(f"Warning: Tumor NIfTI file not found for ID {tumor_id}")
+            print(f"Warning: {description.title()} NIfTI file not found for ID {mask_id}")
             continue
             
         try:
@@ -252,30 +465,35 @@ def generate_display_nifti(filter_id, criteria):
             # Store the first affine to use for output
             if first_affine is None:
                 first_affine = img.affine
+                # Initialize combined volume with first volume shape
+                combined_volume = np.zeros_like(vol)
                 
-            loaded_volumes.append(vol)
+            # Ensure all volumes have the same shape before adding
+            if vol.shape == combined_volume.shape:
+                combined_volume += vol
+            
+            # Clear volume from memory immediately after use
+            del vol, img
+            
+            # Print progress for large datasets
+            if (i + 1) % 50 == 0:
+                print(f"Processed {i + 1}/{len(id_list)} {description} files...")
+                
         except Exception as e:
-            print(f"Error loading tumor NIfTI for ID {tumor_id}: {e}")
+            print(f"Error loading {description} NIfTI for ID {mask_id}: {e}")
     
-    if not loaded_volumes:
-        print("No valid tumor NIfTI files found to process")
+    if first_affine is None:
+        print(f"No valid {description} NIfTI files found to process")
         return None
     
-    # Sum all tumor volumes to create a collective view
-    combined_volume = np.zeros_like(loaded_volumes[0])
-    for vol in loaded_volumes:
-        # Ensure all volumes have the same shape before adding
-        if vol.shape == combined_volume.shape:
-            combined_volume += vol
-    
-    # Clip values to prevent overflow (tumors are binary 0/1, so max should be reasonable)
-    combined_volume = np.clip(combined_volume, 0, len(loaded_volumes))
+    # Clip values to prevent overflow
+    combined_volume = np.clip(combined_volume, 0, len(id_list))
     
     # Create and save the new NIfTI
     output_img = nib.Nifti1Image(combined_volume, first_affine)
     nib.save(output_img, out_path)
     
-    print(f"Created collective tumor display NIfTI at {out_path} from {len(loaded_volumes)} tumor volumes")
+    print(f"Created collective {description} display NIfTI at {out_path} from {len(id_list)} {description} volumes")
     return out_path
 
 # Generate collective view of all tumors when run as main
