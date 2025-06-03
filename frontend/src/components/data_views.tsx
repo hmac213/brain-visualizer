@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Chart from './chart';
-import { LayoutGrid, StretchHorizontal } from 'lucide-react'
+import { LayoutGrid, StretchHorizontal, Maximize2, X } from 'lucide-react'
 import NewChartModal from './NewChartModal';
+import { useResizable } from '../hooks/useResizable';
 
 // Remove the baseURL since we're using the proxy
 // const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -14,12 +15,28 @@ interface PlotlyConfig {
 interface DataProps {
     dataShowing: boolean;
     toggleData: React.Dispatch<React.SetStateAction<boolean>>;
+    onWidthChange?: (width: number) => void;
 }
 
 export default function DataView(props: DataProps) {
   const [activeChartConfigs, setActiveChartConfigs] = useState<Record<string, PlotlyConfig>>({});
   const [isGridLayout, setIsGridLayout] = useState(false);
   const [newChartModal, setNewChartModal] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  // Resizable functionality
+  const { width, isResizing, ResizeHandle } = useResizable({
+    initialWidth: 25,
+    minWidth: 15,
+    maxWidth: 60
+  });
+
+  // Notify parent component of width changes for brain scaling
+  useEffect(() => {
+    if (props.onWidthChange && !isFullScreen) {
+      props.onWidthChange(width);
+    }
+  }, [width, isFullScreen, props.onWidthChange]);
 
   useEffect(() => {
     fetch('/api/charts', {
@@ -55,64 +72,97 @@ export default function DataView(props: DataProps) {
 
   return props.dataShowing ? (
       <div
-        className={`fixed top-0 left-0 h-full bg-white shadow-lg transition-all duration-300 ease-in-out w-1/4`}
-        style={{ zIndex: 50, pointerEvents: 'auto' }}
+        className={`fixed top-0 left-0 h-full bg-white shadow-lg relative ${
+          !isFullScreen ? '' : 'w-full'
+        }`}
+        style={{ 
+          zIndex: 50, 
+          pointerEvents: 'auto',
+          width: isFullScreen ? '100%' : `${width}%`,
+          // Disable transition during resize for better performance
+          transition: isResizing ? 'none' : 'all 0.3s ease-in-out'
+        }}
       >
-        <div className='bg-white h-full w-full overflow-hidden'>
+        {/* Resize handle - only show when not in fullscreen */}
+        {!isFullScreen && <ResizeHandle />}
+
+        <div className='bg-white h-full w-full overflow-hidden flex flex-col'>
           {/* Header */}
-          <div className='flex justify-between items-center p-4 border-b'>
-            <h1 className='text-xl font-semibold'>Data Visualizations</h1>
-            <div className='flex items-center space-x-2'>
+          <div className='flex justify-between items-center p-3 border-b flex-shrink-0'>
+            <h1 className='text-lg font-semibold'>Data Visualizations</h1>
+            <div className='flex items-center space-x-1'>
+              <button
+                onClick={() => setIsFullScreen(!isFullScreen)}
+                className='p-1.5 hover:bg-gray-100 rounded-md transition-colors'
+                title={isFullScreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+              >
+                <Maximize2 className='w-4 h-4' />
+              </button>
               <button
                 onClick={() => props.toggleData(false)}
-                className='p-2 hover:bg-gray-100 rounded-md transition-colors'
+                className='p-1.5 hover:bg-gray-100 rounded-md transition-colors'
                 title='Close'
               >
-                <span className='sr-only'>Close</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                <X className='w-4 h-4' />
               </button>
             </div>
           </div>
 
-          {/* Content area below header, same as Filter panel */}
-          <div className='p-4 overflow-y-auto h-[calc(100%-4rem)]'>
-            {/* Toolbar for grid/list toggle and New Chart button */}
-            <div className='flex items-center space-x-3 mb-4'>
-              <button 
-                className={`px-4 py-2 transition-colors text-sm font-medium rounded-md ${
-                  isGridLayout ? 'bg-[#2774AE] text-white' : 'hover:bg-[#2774AE] hover:text-white'
-                }`}
-                onClick={() => setIsGridLayout(true)}
-              >
-                <LayoutGrid className='w-4 h-4' />
-              </button>
-              <button 
-                className={`px-4 py-2 transition-colors text-sm font-medium rounded-md ${
-                  !isGridLayout ? 'bg-[#2774AE] text-white' : 'hover:bg-[#2774AE] hover:text-white'
-                }`}
-                onClick={() => setIsGridLayout(false)}
-              >
-                <StretchHorizontal className='w-4 h-4' />
-              </button>
+          {/* Fixed Toolbar */}
+          <div className='px-3 pt-3 pb-2 border-b flex-shrink-0'>
+            <div className='flex items-center space-x-3'>
+              {isFullScreen && (
+                /* Grid/List toggle - only show in fullscreen mode */
+                <>
+                  <button 
+                    className={`px-4 py-2 transition-colors text-sm font-medium rounded-md ${
+                      isGridLayout ? 'bg-[#2774AE] text-white' : 'hover:bg-[#2774AE] hover:text-white'
+                    }`}
+                    onClick={() => setIsGridLayout(true)}
+                    title="Grid Layout"
+                  >
+                    <LayoutGrid className='w-4 h-4' />
+                  </button>
+                  <button 
+                    className={`px-4 py-2 transition-colors text-sm font-medium rounded-md ${
+                      !isGridLayout ? 'bg-[#2774AE] text-white' : 'hover:bg-[#2774AE] hover:text-white'
+                    }`}
+                    onClick={() => setIsGridLayout(false)}
+                    title="Vertical Layout"
+                  >
+                    <StretchHorizontal className='w-4 h-4' />
+                  </button>
+                </>
+              )}
               <button
                 onClick={() => setNewChartModal(true)}
-                className='ml-auto px-4 py-2 bg-[#2774AE] text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium'
+                className={`${isFullScreen ? 'ml-auto' : ''} px-3 py-2 bg-[#2774AE] text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors`}
               >
-                New Chart
+                {width > 30 ? 'New Chart' : 'New'}
               </button>
             </div>
+          </div>
 
-            {/* Charts Content */}
+          {/* Scrollable Charts Content */}
+          <div className='flex-1 overflow-y-auto p-3'>
             {Object.keys(activeChartConfigs).length > 0 ? (
-              <div className={`w-full h-full overflow-auto ${
-                isGridLayout 
-                  ? 'grid grid-cols-1 gap-6' 
-                  : 'flex flex-col space-y-6'
+              <div className={`${
+                (isGridLayout && isFullScreen)
+                  ? 'grid grid-cols-2 gap-6' 
+                  : 'space-y-6'
               }`}>
                 {Object.entries(activeChartConfigs).map(([chartId, config]) => {
                   if (config && config.data && config.layout) {
                     return (
-                      <Chart plotlyConfig={config} key={chartId}/>
+                      <div key={chartId} className={`${
+                        (isGridLayout && isFullScreen) 
+                          ? 'min-h-[400px]' 
+                          : isFullScreen 
+                            ? 'min-h-[500px]' 
+                            : 'min-h-[300px]'
+                      }`}>
+                        <Chart plotlyConfig={config} />
+                      </div>
                     );
                   } else {
                     console.warn(`Invalid or missing config for chart ID: ${chartId}`);
@@ -121,7 +171,7 @@ export default function DataView(props: DataProps) {
                 })}
               </div>
             ) : (
-              <div className="text-center text-gray-500 mt-10">No chart data available or failed to load charts.</div>
+              <div className="text-center text-gray-500 mt-10 text-sm">No chart data available or failed to load charts.</div>
             )}
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Maximize2, X } from 'lucide-react';
+import { useResizable } from '../hooks/useResizable';
 
 // Types based on database models
 interface FilterOption {
@@ -63,6 +64,7 @@ interface FilterProps {
   toggleFilter: React.Dispatch<React.SetStateAction<boolean>>;
   activeFilterId: string | null;
   onFilterChange: (filterId: string) => void;
+  onWidthChange?: (width: number) => void;
 }
 
 export default function Filter(props: FilterProps) {
@@ -71,6 +73,20 @@ export default function Filter(props: FilterProps) {
   const [loading, setLoading] = useState<boolean>(true);
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
   
+  // Resizable functionality
+  const { width, isResizing, ResizeHandle } = useResizable({
+    initialWidth: 25,
+    minWidth: 15,
+    maxWidth: 60
+  });
+
+  // Notify parent component of width changes for brain scaling
+  useEffect(() => {
+    if (props.onWidthChange && !isFullScreen) {
+      props.onWidthChange(width);
+    }
+  }, [width, isFullScreen, props.onWidthChange]);
+
   // Modal states
   const [modalFilter, setModalFilter] = useState<FilterItem | null>(null);
   const [newFilterModal, setNewFilterModal] = useState(false);
@@ -274,11 +290,20 @@ export default function Filter(props: FilterProps) {
 
   return (
     <div
-      className={`fixed top-0 left-0 h-full bg-white shadow-lg transition-all duration-300 ease-in-out ${
-        !isFullScreen ? 'w-1/4' : 'w-full'
+      className={`fixed top-0 left-0 h-full bg-white shadow-lg relative ${
+        !isFullScreen ? '' : 'w-full'
       }`}
-      style={{ zIndex: 50, pointerEvents: 'auto' }}
+      style={{ 
+        zIndex: 50, 
+        pointerEvents: 'auto',
+        width: isFullScreen ? '100%' : `${width}%`,
+        // Disable transition during resize for better performance
+        transition: isResizing ? 'none' : 'all 0.3s ease-in-out'
+      }}
     >
+      {/* Resize handle - only show when not in fullscreen */}
+      {!isFullScreen && <ResizeHandle />}
+
       <div className='bg-white h-full w-full overflow-hidden'>
         {/* Header */}
         <div className='flex justify-between items-center p-3 border-b'>
@@ -321,7 +346,7 @@ export default function Filter(props: FilterProps) {
           ) : (
             /* Filter List */
             <div className='border border-gray-300 rounded-lg bg-gray-100 max-h-[75vh] overflow-y-auto'>
-              {/* Optimized layout for 1/4 width */}
+              {/* Optimized layout for dynamic width */}
               <div className='divide-y divide-gray-200'>
                 {/* Header */}
                 <div className='bg-gray-50 px-3 py-2'>
@@ -391,7 +416,7 @@ export default function Filter(props: FilterProps) {
                           </div>
                         </div>
                       ) : (
-                        /* Sidepanel mode: two rows with buttons below */
+                        /* Sidepanel mode: adaptive layout based on width */
                         <>
                           {/* Main row with radio and name */}
                           <div className='grid grid-cols-12 gap-2 items-center mb-2'>
@@ -410,8 +435,8 @@ export default function Filter(props: FilterProps) {
                             </div>
                           </div>
                           
-                          {/* Action buttons row */}
-                          <div className='flex gap-2 justify-center'>
+                          {/* Action buttons row - always centered */}
+                          <div className="flex gap-2 justify-center">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -419,30 +444,30 @@ export default function Filter(props: FilterProps) {
                                 setEditFilterName(filter.name);
                                 setEditFilterCriteria(filter.criteria);
                               }}
-                              className='flex-1 px-3 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors max-w-[80px]'
+                              className={`${width > 20 ? 'flex-1 max-w-[80px]' : 'px-2'} py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors`}
                               title="Edit filter"
                             >
-                              Edit
+                              {width > 15 ? 'Edit' : 'E'}
                             </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setModalFilter(filter);
                               }}
-                              className='flex-1 px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors max-w-[80px]'
+                              className={`${width > 20 ? 'flex-1 max-w-[80px]' : 'px-2'} py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors`}
                               title="View filter details"
                             >
-                              View
+                              {width > 15 ? 'View' : 'V'}
                             </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDelete(index);
                               }}
-                              className='flex-1 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors max-w-[80px]'
+                              className={`${width > 20 ? 'flex-1 max-w-[80px]' : 'px-2'} py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors`}
                               title="Delete filter"
                             >
-                              Delete
+                              {width > 15 ? 'Delete' : 'D'}
                             </button>
                           </div>
                         </>
