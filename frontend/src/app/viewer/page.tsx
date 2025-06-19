@@ -21,6 +21,7 @@ export default function Viewer() {
   const [dataWidth, setDataWidth] = useState(25);
   const [isFilterFullScreen, setIsFilterFullScreen] = useState(false);
   const [isDataFullScreen, setIsDataFullScreen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [activeViewType, setActiveViewType] = useState<string>('surface');
   const [activeMaskType, setActiveMaskType] = useState<string>('tumor');
@@ -162,8 +163,9 @@ export default function Viewer() {
       };
     }
 
-    const leftSidebarWidthRem = 4; // 4rem = 64px for the left sidebar
-    const leftSidebarWidthPercent = (leftSidebarWidthRem * 16) / window.innerWidth * 100; // Convert to percentage
+    // Dynamic sidebar width: 64px when collapsed, 192px when expanded
+    const leftSidebarWidthPx = sidebarCollapsed ? 64 : 192;
+    const leftSidebarWidthPercent = (leftSidebarWidthPx / window.innerWidth) * 100; // Convert to percentage
 
     if (filterShowing || dataShowing) {
       const currentWidth = filterShowing ? filterWidth : dataWidth;
@@ -199,6 +201,8 @@ export default function Viewer() {
           activeMaskType={activeMaskType}
           onMaskTypeChange={handleMaskTypeChange}
           isMaskTypeChanging={isMaskTypeChanging}
+          isCollapsed={sidebarCollapsed}
+          onCollapseChange={setSidebarCollapsed}
         />
       )}
 
@@ -244,12 +248,14 @@ export default function Viewer() {
           onWidthChange={setFilterWidth}
           onFullScreenChange={setIsFilterFullScreen}
           activeMaskType={activeMaskType}
+          sidebarWidth={sidebarCollapsed ? 64 : 192}
         />
         <DataView 
           dataShowing={dataShowing} 
           toggleData={setDataShowing}
           onWidthChange={setDataWidth}
           onFullScreenChange={setIsDataFullScreen}
+          sidebarWidth={sidebarCollapsed ? 64 : 192}
         />
       </div>
     </div>

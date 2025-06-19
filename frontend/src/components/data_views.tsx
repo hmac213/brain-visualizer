@@ -17,6 +17,7 @@ interface DataProps {
     toggleData: React.Dispatch<React.SetStateAction<boolean>>;
     onWidthChange?: (width: number) => void;
     onFullScreenChange?: (isFullScreen: boolean) => void;
+    sidebarWidth?: number;
 }
 
 export default function DataView(props: DataProps) {
@@ -86,7 +87,7 @@ export default function DataView(props: DataProps) {
         style={{ 
           zIndex: 50, 
           pointerEvents: 'auto',
-          left: isFullScreen ? '0' : '64px', // Account for left sidebar
+          left: isFullScreen ? '0' : `${props.sidebarWidth || 64}px`, // Account for left sidebar
           width: isFullScreen ? '100%' : `${width}%`,
           maxHeight: '100vh', // Ensure it never exceeds viewport height
           // Disable transition during resize for better performance
