@@ -31,11 +31,13 @@ from blueprints.viewer import viewer
 from blueprints.filters import filters
 from blueprints.chart import chart
 from blueprints.glass_brain import glass_brain_bp
+from blueprints.patient_queries import patient_queries
 
 app.register_blueprint(viewer)
 app.register_blueprint(filters)
 app.register_blueprint(chart)
 app.register_blueprint(glass_brain_bp)
+app.register_blueprint(patient_queries)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

@@ -4,7 +4,7 @@ import sys
 from db_loading.generate_display_nifti import generate_display_nifti, get_filtered_tumor_ids, get_filtered_mri_ids, get_filtered_dose_ids
 from models import Patients, TumorMask, DoseMask, MRIMask, NiftiData
 from app import db
-from sqlalchemy import func, distinct
+from sqlalchemy import distinct
 from datetime import date
 
 filters = Blueprint('filters', __name__, url_prefix='/api')

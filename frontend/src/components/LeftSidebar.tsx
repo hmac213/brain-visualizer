@@ -13,6 +13,8 @@ interface LeftSidebarProps {
   isMaskTypeChanging: boolean;
   isCollapsed: boolean;
   onCollapseChange: (collapsed: boolean) => void;
+  patientSearchShowing?: boolean;
+  onPatientSearchToggle?: () => void;
 }
 
 export default function LeftSidebar(props: LeftSidebarProps) {
@@ -33,8 +35,9 @@ export default function LeftSidebar(props: LeftSidebarProps) {
   };
 
   const handlePatientStatsClick = () => {
-    // TODO: Implement patient statistics functionality
-    console.log("Patient statistics button clicked");
+    if (props.onPatientSearchToggle) {
+      props.onPatientSearchToggle();
+    }
   };
 
   const toggleCollapse = () => {
@@ -100,7 +103,11 @@ export default function LeftSidebar(props: LeftSidebarProps) {
           onClick={handlePatientStatsClick}
           className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
             props.isCollapsed ? 'justify-center' : 'justify-start text-left'
-          } text-white hover:bg-white hover:text-[#2774AE] hover:shadow`}
+          } ${
+            props.patientSearchShowing
+              ? 'bg-white text-[#2774AE] shadow'
+              : 'text-white hover:bg-white hover:text-[#2774AE] hover:shadow'
+          }`}
           style={{ transition: 'background 0.2s, color 0.2s' }}
           title="Patient Statistics"
         >
