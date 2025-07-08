@@ -4,6 +4,9 @@ import os
 import json
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from redis_cache import RedisCache
+
+redis_cache = RedisCache()
 
 app = Flask(__name__)
 CORS(app)

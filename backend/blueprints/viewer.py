@@ -4,28 +4,49 @@ from db_loading.nifti_loading import load_nifti
 from flask import Blueprint, send_from_directory
 import cortex
 import os
+import shutil
+from app import redis_cache
 
 viewer = Blueprint('viewer', __name__, url_prefix='/api')
 
-# path for static viewer files
-out_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../static_viewer'))
-
-@viewer.route('/viewer/<uuid:nifti_id_str>/<path:nifti_file_path>')
+@viewer.route('/viewer/<uuid:nifti_id_str>/<path:nifti_dir>')
 @viewer.route('/viewer')
-def req_visualize_brain(nifti_id_str=None, nifti_file_path=None):
-    if nifti_id_str and nifti_file_path:
+def req_visualize_brain(nifti_id_str=None, nifti_dir=None):
+    if nifti_id_str and nifti_dir:
+        redis_key = f'viewer_cache:{nifti_id_str}'
+        
+        if redis_cache.path_exists(redis_key):
+            out_path = redis_cache.get_path(redis_key)
+            # Ensure out_path is a string, not bytes
+            if isinstance(out_path, bytes):
+                out_path = out_path.decode('utf-8')
+            return send_from_directory(out_path, 'index.html') # already cached, so we return
+
+        out_path = os.path.abspath(os.path.join(
+            '/app/filestore/viewer_cache',
+            str(nifti_id_str),
+        ))
+        redis_cache.set_path(redis_key, out_path)
+
         nifti_file_path = os.path.join(
             '/app/filestore',
-            nifti_file_path,
-            f'/{nifti_id_str}.nii.gz'
+            nifti_dir,
+            f'{nifti_id_str}.nii.gz'
         )
-    else:
-        # Use the Docker volume path for NIfTI files with mask type subdirectory
+    else: # no nifti_id_str or nifti_dir, so we use the current filter and mask type
         current_filter = current_app.config['CURRENT_FILTER']
         current_mask_type = current_app.config.get('CURRENT_MASK_TYPE', 'tumor')  # Default to tumor
         current_filter_id = ''
         for id in current_filter:
             current_filter_id = id
+
+        redis_key = f'viewer_cache:{current_filter_id}_{current_mask_type}'
+        if redis_cache.path_exists(redis_key):
+            out_path = redis_cache.get_path(redis_key)
+            # Ensure out_path is a string, not bytes
+            if isinstance(out_path, bytes):
+                out_path = out_path.decode('utf-8')
+            return send_from_directory(out_path, 'index.html') # already cached, so we return
 
         # Map mask types to cache directories
         cache_subdirs = {
@@ -36,6 +57,13 @@ def req_visualize_brain(nifti_id_str=None, nifti_file_path=None):
 
         cache_subdir = cache_subdirs.get(current_mask_type, 'tumor_mask_cache')
 
+        out_path = os.path.abspath(os.path.join(
+            '/app/filestore/viewer_cache',
+            current_filter_id,
+            current_mask_type,
+        ))
+        redis_cache.set_path(redis_key, out_path)
+
         # Use the Docker volume path for NIfTI files with mask type subdirectory
         nifti_file_path = os.path.join(
             '/app/filestore', 
@@ -45,16 +73,57 @@ def req_visualize_brain(nifti_id_str=None, nifti_file_path=None):
 
     current_nii = load_nifti(nifti_file_path)
     current_nii_volume_data = current_nii[0]
+
+    # Use a shared directory for common files and session-specific for index.html
+    shared_out_path = '/app/filestore/viewer_cache/pycortex_shared'
+    session_out_path = out_path
+    
+    # Ensure both directories exist
+    os.makedirs(shared_out_path, exist_ok=True)
+    os.makedirs(session_out_path, exist_ok=True)
+    
+    # Template stays standard - no modifications needed
+    
     current_nii_volume = cortex.Volume(current_nii_volume_data, subject='S1', xfmname='fullhead')
 
-    # Ensure the output directory exists
-    os.makedirs(out_path, exist_ok=True)
+    # Create the static viewer files in shared directory
+    cortex.webgl.make_static(outpath=shared_out_path, data={ 'test': current_nii_volume }, recache=True, template='custom_viewer.html')
+    
+    # Move only the index.html to the session-specific directory
+    shared_index = os.path.join(shared_out_path, 'index.html')
+    session_index = os.path.join(session_out_path, 'index.html')
+    
+    if os.path.exists(shared_index):
+        shutil.move(shared_index, session_index)
+    
+    return send_from_directory(session_out_path, 'index.html')
 
-    # Create the static viewer files
-    cortex.webgl.make_static(outpath=out_path, data={ 'test': current_nii_volume }, recache=True, template='custom_viewer.html')
-    return send_from_directory(out_path, 'index.html')
-
-# serve files associated with viewer
-@viewer.route('/<path:filedir>')
-def serve_static_viewer_assets(filedir):
-    return send_from_directory(out_path, filedir)
+# serve files from shared pycortex directory (catches all resource requests)
+@viewer.route('/<path:file_path>')
+def serve_pycortex_shared_assets(file_path):
+    shared_directory = '/app/filestore/viewer_cache/pycortex_shared'
+    
+    # Split into directory and filename
+    file_directory = os.path.dirname(file_path)
+    filename = os.path.basename(file_path)
+    
+    if file_directory:
+        full_directory = os.path.join(shared_directory, file_directory)
+    else:
+        full_directory = shared_directory
+    
+    # Security check: ensure we're only serving from the shared directory
+    abs_full_dir = os.path.abspath(full_directory)
+    abs_shared_dir = os.path.abspath(shared_directory)
+    
+    if not abs_full_dir.startswith(abs_shared_dir):
+        from flask import abort
+        abort(404)
+    
+    # Verify the file exists
+    file_full_path = os.path.join(full_directory, filename)
+    if not os.path.exists(file_full_path):
+        from flask import abort
+        abort(404)
+    
+    return send_from_directory(full_directory, filename)

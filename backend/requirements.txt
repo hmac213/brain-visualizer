@@ -15,5 +15,6 @@ Flask-SQLAlchemy
 Flask-Migrate
 psycopg2-binary
 python-dotenv
+redis
 
 git+https://github.com/gallantlab/pycortex.git
