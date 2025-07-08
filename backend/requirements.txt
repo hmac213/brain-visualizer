@@ -1,12 +1,12 @@
+numpy==2.2.*
+
 plotly
 Flask
 Flask-Cors
 setuptools
 wheel
-numpy
 cython
 nibabel
-git+https://github.com/gallantlab/pycortex.git
 scikit-image
 templateflow
 scipy
@@ -15,3 +15,5 @@ Flask-SQLAlchemy
 Flask-Migrate
 psycopg2-binary
 python-dotenv
+
+git+https://github.com/gallantlab/pycortex.git

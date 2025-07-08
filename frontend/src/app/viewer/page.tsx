@@ -2,15 +2,15 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { SlidersHorizontal, ChartColumn } from 'lucide-react'
-import Filter from '@/components/filter';
-import DataView from '@/components/data_views';
+import Filter from '@/components/Filter';
+import DataView from '@/components/DataView';
 import PatientSearch from '@/components/PatientSearch';
 import GlassBrainViewer from '@/components/GlassBrainViewer';
 import LeftSidebar from '@/components/LeftSidebar';
 import dynamic from 'next/dynamic';
 
 // Use dynamic import for the Filter component to avoid hydration issues
-const DynamicFilter = dynamic(() => import('@/components/filter'), {
+const DynamicFilter = dynamic(() => import('@/components/Filter'), {
   ssr: false
 });
 
