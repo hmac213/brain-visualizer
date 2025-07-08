@@ -1,4 +1,4 @@
-from flask import current_app
+from flask import current_app, request, jsonify
 from patches import template_patch
 from db_loading.nifti_loading import load_nifti
 from flask import Blueprint, send_from_directory
@@ -13,6 +13,12 @@ viewer = Blueprint('viewer', __name__, url_prefix='/api')
 @viewer.route('/viewer')
 def req_visualize_brain(nifti_id_str=None, nifti_dir=None):
     if nifti_id_str and nifti_dir:
+        # Check if this is an asset request (contains file extension or starts with common asset paths)
+        if ('.' in nifti_dir and nifti_dir.split('.')[-1].lower() in ['json', 'png', 'jpg', 'jpeg', 'gif', 'css', 'js', 'svg', 'ctm']) or \
+           nifti_dir.startswith(('resources/', 'data/', 'css/', 'js/', 'images/')):
+            # This is an asset request - serve from shared directory
+            return serve_pycortex_shared_assets(nifti_dir)
+        
         redis_key = f'viewer_cache:{nifti_id_str}'
         
         if redis_cache.path_exists(redis_key):
@@ -33,6 +39,12 @@ def req_visualize_brain(nifti_id_str=None, nifti_dir=None):
             nifti_dir,
             f'{nifti_id_str}.nii.gz'
         )
+        
+        # Check if file exists
+        if not os.path.exists(nifti_file_path):
+            from flask import abort
+            abort(404)
+            
     else: # no nifti_id_str or nifti_dir, so we use the current filter and mask type
         current_filter = current_app.config['CURRENT_FILTER']
         current_mask_type = current_app.config.get('CURRENT_MASK_TYPE', 'tumor')  # Default to tumor
@@ -71,32 +83,35 @@ def req_visualize_brain(nifti_id_str=None, nifti_dir=None):
             f"{current_filter_id}.nii.gz"
         )
 
-    current_nii = load_nifti(nifti_file_path)
-    current_nii_volume_data = current_nii[0]
+    try:
+        current_nii = load_nifti(nifti_file_path)
+        current_nii_volume_data = current_nii[0]
 
-    # Use a shared directory for common files and session-specific for index.html
-    shared_out_path = '/app/filestore/viewer_cache/pycortex_shared'
-    session_out_path = out_path
-    
-    # Ensure both directories exist
-    os.makedirs(shared_out_path, exist_ok=True)
-    os.makedirs(session_out_path, exist_ok=True)
-    
-    # Template stays standard - no modifications needed
-    
-    current_nii_volume = cortex.Volume(current_nii_volume_data, subject='S1', xfmname='fullhead')
+        # Use a shared directory for common files and session-specific for index.html
+        shared_out_path = '/app/filestore/viewer_cache/pycortex_shared'
+        session_out_path = out_path
+        
+        # Ensure both directories exist
+        os.makedirs(shared_out_path, exist_ok=True)
+        os.makedirs(session_out_path, exist_ok=True)
+        
+        current_nii_volume = cortex.Volume(current_nii_volume_data, subject='S1', xfmname='fullhead')
 
-    # Create the static viewer files in shared directory
-    cortex.webgl.make_static(outpath=shared_out_path, data={ 'test': current_nii_volume }, recache=True, template='custom_viewer.html')
-    
-    # Move only the index.html to the session-specific directory
-    shared_index = os.path.join(shared_out_path, 'index.html')
-    session_index = os.path.join(session_out_path, 'index.html')
-    
-    if os.path.exists(shared_index):
-        shutil.move(shared_index, session_index)
-    
-    return send_from_directory(session_out_path, 'index.html')
+        # Create the static viewer files in shared directory
+        cortex.webgl.make_static(outpath=shared_out_path, data={ 'test': current_nii_volume }, recache=True, template='custom_viewer.html')
+        
+        # Move only the index.html to the session-specific directory
+        shared_index = os.path.join(shared_out_path, 'index.html')
+        session_index = os.path.join(session_out_path, 'index.html')
+        
+        if os.path.exists(shared_index):
+            shutil.move(shared_index, session_index)
+        
+        return send_from_directory(session_out_path, 'index.html')
+        
+    except Exception as e:
+        from flask import abort
+        abort(500)
 
 # serve files from shared pycortex directory (catches all resource requests)
 @viewer.route('/<path:file_path>')

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X, Maximize2, User, Loader2, ArrowLeft, Calendar, Heart, Ruler, Weight, Activity, Eye, Brain, Pill } from 'lucide-react';
 import { useResizable } from '../hooks/useResizable';
+import BrainViewerModal from './BrainViewerModal';
 
 interface PatientSearchResult {
   id: string;
@@ -67,6 +68,14 @@ export default function PatientSearch(props: PatientSearchProps) {
   const [mriTimeline, setMriTimeline] = useState<MRITimelineItem[]>([]);
   const [tumorList, setTumorList] = useState<TumorItem[]>([]);
   const [treatmentList, setTreatmentList] = useState<TreatmentItem[]>([]);
+
+  // Brain viewer modal state
+  const [brainViewerOpen, setBrainViewerOpen] = useState(false);
+  const [viewerData, setViewerData] = useState<{
+    niftiId: string;
+    title: string;
+    dataType: 'mri' | 'tumor' | 'dose';
+  } | null>(null);
 
   // Resizable functionality
   const { width, isResizing, ResizeHandle } = useResizable({
@@ -182,18 +191,47 @@ export default function PatientSearch(props: PatientSearchProps) {
   };
 
   const handleViewMRI = (mriId: string) => {
-    // TODO: Implement MRI viewing functionality
-    console.log('View MRI:', mriId);
+    // Find the MRI data for the title
+    const mriData = mriTimeline.find(mri => mri.id === mriId);
+    const title = mriData ? `MRI - ${formatDate(mriData.date)}` : `MRI Scan`;
+    
+    setViewerData({
+      niftiId: mriId,
+      title: title,
+      dataType: 'mri'
+    });
+    setBrainViewerOpen(true);
   };
 
   const handleViewTumor = (tumorId: string) => {
-    // TODO: Implement tumor viewing functionality
-    console.log('View Tumor:', tumorId);
+    // Find the tumor data for the title
+    const tumorData = tumorList.find(tumor => tumor.id === tumorId);
+    const title = tumorData ? `Tumor - ${tumorData.location}` : `Tumor Mask`;
+    
+    setViewerData({
+      niftiId: tumorId,
+      title: title,
+      dataType: 'tumor'
+    });
+    setBrainViewerOpen(true);
   };
 
   const handleViewTreatment = (treatmentId: string) => {
-    // TODO: Implement treatment viewing functionality
-    console.log('View Treatment:', treatmentId);
+    // Find the treatment data for the title
+    const treatmentData = treatmentList.find(treatment => treatment.id === treatmentId);
+    const title = treatmentData ? `Treatment - ${treatmentData.type}` : `Dose Mask`;
+    
+    setViewerData({
+      niftiId: treatmentId,
+      title: title,
+      dataType: 'dose'
+    });
+    setBrainViewerOpen(true);
+  };
+
+  const handleCloseBrainViewer = () => {
+    setBrainViewerOpen(false);
+    setViewerData(null);
   };
 
   const formatDate = (dateString: string | null) => {
@@ -556,6 +594,17 @@ export default function PatientSearch(props: PatientSearchProps) {
           )}
         </div>
       </div>
+
+      {/* Brain Viewer Modal */}
+      {viewerData && (
+        <BrainViewerModal
+          isOpen={brainViewerOpen}
+          onClose={handleCloseBrainViewer}
+          niftiId={viewerData.niftiId}
+          title={viewerData.title}
+          dataType={viewerData.dataType}
+        />
+      )}
     </div>
   ) : null;
 } 
