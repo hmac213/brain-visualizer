@@ -81,7 +81,7 @@ export default function DataView(props: DataProps) {
 
   return props.dataShowing ? (
       <div
-        className={`fixed top-0 h-screen bg-white shadow-lg relative ${
+        className={`fixed top-0 h-screen bg-white shadow-lg ${
           !isFullScreen ? '' : 'w-full'
         }`}
         style={{ 

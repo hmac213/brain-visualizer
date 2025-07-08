@@ -1,15 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { SlidersHorizontal, ChartColumn } from 'lucide-react'
 import Filter from '@/components/Filter';
 import DataView from '@/components/DataView';
 import PatientSearch from '@/components/PatientSearch';
-import GlassBrainViewer from '@/components/GlassBrainViewer';
 import LeftSidebar from '@/components/LeftSidebar';
 import dynamic from 'next/dynamic';
 
-// Use dynamic import for the Filter component to avoid hydration issues
 const DynamicFilter = dynamic(() => import('@/components/Filter'), {
   ssr: false
 });
@@ -26,13 +23,16 @@ export default function Viewer() {
   const [isDataFullScreen, setIsDataFullScreen] = useState(false);
   const [isPatientSearchFullScreen, setIsPatientSearchFullScreen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [activeViewType, setActiveViewType] = useState<string>('surface');
   const [activeMaskType, setActiveMaskType] = useState<string>('tumor');
   const [isMaskTypeChanging, setIsMaskTypeChanging] = useState<boolean>(false);
   const [isClient, setIsClient] = useState(false);
+  const [iframeTranslateX, setIframeTranslateX] = useState(0);
+  
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const mainContentRef = useRef<HTMLDivElement>(null);
 
-  // Set isClient to true when component mounts - avoid hydration mismatch
+
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -44,9 +44,6 @@ export default function Viewer() {
         if (data && Object.keys(data).length > 0) {
           const initialId = Object.keys(data)[0];
           setActiveFilterId(initialId);
-          console.log("Initial active filter ID set:", initialId);
-        } else {
-          console.log("No initial filter found.");
         }
       })
       .catch(error => {
@@ -56,14 +53,11 @@ export default function Viewer() {
 
   const handleFilterChange = async (newFilterId: string, maskType?: string) => {
     if (newFilterId === activeFilterId && (!maskType || maskType === activeMaskType)) {
-        console.log("Filter already active:", newFilterId);
         return;
     }
 
-    console.log("Attempting to set active filter to:", newFilterId, "with mask type:", maskType || activeMaskType);
     setActiveFilterId(newFilterId);
     
-    // Update mask type if provided
     if (maskType) {
       setActiveMaskType(maskType);
     }
@@ -82,10 +76,8 @@ export default function Viewer() {
         }
 
         const result = await response.json();
-        console.log("Backend update successful:", result.message);
 
-        if ((activeViewType === 'surface') && iframeRef.current) {
-            console.log("Reloading iframe for new filter...");
+        if (iframeRef.current) {
             iframeRef.current.contentWindow?.location.reload();
         }
 
@@ -94,207 +86,131 @@ export default function Viewer() {
     }
   };
 
-  // Handle mask type changes
   const handleMaskTypeChange = async (newMaskType: string) => {
-    console.log("handleMaskTypeChange called with:", newMaskType);
-    console.log("Current activeMaskType:", activeMaskType);
-    
     if (newMaskType !== activeMaskType && !isMaskTypeChanging) {
-      console.log("Changing mask type to:", newMaskType);
       setIsMaskTypeChanging(true);
       setActiveMaskType(newMaskType);
       
       try {
-        // If there's an active filter, reload with new mask type
         if (activeFilterId) {
-          console.log("Reloading active filter with new mask type:", activeFilterId);
           await handleFilterChange(activeFilterId, newMaskType);
-        } else {
-          console.log("No active filter to reload");
         }
       } catch (error) {
         console.error("Error changing mask type:", error);
       } finally {
         setIsMaskTypeChanging(false);
       }
-    } else if (isMaskTypeChanging) {
-      console.log("Mask type change already in progress, ignoring click");
-    } else {
-      console.log("Mask type already active, no change needed");
     }
   };
 
-  // Toggle functions that ensure only one panel is open at a time
   const toggleFilter = () => {
-    if (dataShowing) {
-      setDataShowing(false);
-      setIsDataFullScreen(false); // Reset data fullscreen when closing
-    }
-    if (patientSearchShowing) {
-      setPatientSearchShowing(false);
-      setIsPatientSearchFullScreen(false); // Reset patient search fullscreen when closing
-    }
-    const newFilterShowing = !filterShowing;
-    setFilterShowing(newFilterShowing);
-    // If closing filter panel, reset its fullscreen state
-    if (!newFilterShowing) {
-      setIsFilterFullScreen(false);
-    }
+    if (dataShowing) setDataShowing(false);
+    if (patientSearchShowing) setPatientSearchShowing(false);
+    setFilterShowing(!filterShowing);
   };
 
   const toggleData = () => {
-    if (filterShowing) {
-      setFilterShowing(false);
-      setIsFilterFullScreen(false); // Reset filter fullscreen when closing
-    }
-    if (patientSearchShowing) {
-      setPatientSearchShowing(false);
-      setIsPatientSearchFullScreen(false); // Reset patient search fullscreen when closing
-    }
-    const newDataShowing = !dataShowing;
-    setDataShowing(newDataShowing);
-    // If closing data panel, reset its fullscreen state
-    if (!newDataShowing) {
-      setIsDataFullScreen(false);
-    }
+    if (filterShowing) setFilterShowing(false);
+    if (patientSearchShowing) setPatientSearchShowing(false);
+    setDataShowing(!dataShowing);
   };
 
   const togglePatientSearch = () => {
-    if (filterShowing) {
-      setFilterShowing(false);
-      setIsFilterFullScreen(false); // Reset filter fullscreen when closing
-    }
-    if (dataShowing) {
-      setDataShowing(false);
-      setIsDataFullScreen(false); // Reset data fullscreen when closing
-    }
-    const newPatientSearchShowing = !patientSearchShowing;
-    setPatientSearchShowing(newPatientSearchShowing);
-    // If closing patient search panel, reset its fullscreen state
-    if (!newPatientSearchShowing) {
-      setIsPatientSearchFullScreen(false);
-    }
+    if (filterShowing) setFilterShowing(false);
+    if (dataShowing) setDataShowing(false);
+    setPatientSearchShowing(!patientSearchShowing);
   };
 
-  // Early return during server-side rendering
+  useEffect(() => {
+    let activePanelWidthVw = 0;
+    if (filterShowing) {
+      activePanelWidthVw = isFilterFullScreen ? 100 : filterWidth;
+    } else if (dataShowing) {
+      activePanelWidthVw = isDataFullScreen ? 100 : dataWidth;
+    } else if (patientSearchShowing) {
+      activePanelWidthVw = isPatientSearchFullScreen ? 100 : patientSearchWidth;
+    }
+
+    const translateXVw = activePanelWidthVw / 2;
+    setIframeTranslateX(translateXVw);
+  }, [
+    filterShowing, dataShowing, patientSearchShowing,
+    filterWidth, dataWidth, patientSearchWidth,
+    isFilterFullScreen, isDataFullScreen, isPatientSearchFullScreen
+  ]);
+
   if (!isClient) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  // Calculate responsive transforms based on current panel width and left sidebar
-  const getResponsiveStyle = () => {
-    // In fullscreen mode (panel showing AND fullscreen), no left sidebar offset needed
-    if ((filterShowing && isFilterFullScreen) || (dataShowing && isDataFullScreen) || (patientSearchShowing && isPatientSearchFullScreen)) {
-      return {
-        transition: 'transform 0.3s ease-in-out',
-        transformOrigin: 'center center',
-        transform: 'translateX(0%)',
-      };
-    }
-
-    // Dynamic sidebar width: 64px when collapsed, 192px when expanded
-    const leftSidebarWidthPx = sidebarCollapsed ? 64 : 192;
-    const leftSidebarWidthPercent = (leftSidebarWidthPx / window.innerWidth) * 100; // Convert to percentage
-
-    if (filterShowing || dataShowing || patientSearchShowing) {
-      const currentWidth = filterShowing ? filterWidth : dataShowing ? dataWidth : patientSearchWidth;
-      // Add half the panel width to the base translate to keep centered
-      const totalTranslatePercent = leftSidebarWidthPercent + (currentWidth / 2);
-      
-      return {
-        transition: 'transform 0.3s ease-in-out',
-        transformOrigin: 'center center',
-        transform: `translateX(${totalTranslatePercent}%)`,
-      };
-    }
-    return {
-      transition: 'transform 0.3s ease-in-out',
-      transformOrigin: 'center center',
-      transform: `translateX(${leftSidebarWidthPercent}%)`,
-    };
-  };
-
-  const responsiveStyle = getResponsiveStyle();
+  const sidebarWidth = sidebarCollapsed ? 80 : 256; 
 
   return (
-    <div style={{ display: 'grid', width: '100vw', height: '100vh', overflow: 'hidden' }}>
-      {/* Left Sidebar - hide only when any panel is both showing AND in fullscreen */}
-      {!(filterShowing && isFilterFullScreen) && !(dataShowing && isDataFullScreen) && !(patientSearchShowing && isPatientSearchFullScreen) && (
-        <LeftSidebar
-          filterShowing={filterShowing}
-          dataShowing={dataShowing}
-          onFilterToggle={toggleFilter}
-          onDataToggle={toggleData}
-          activeViewType={activeViewType}
-          onViewTypeChange={setActiveViewType}
-          activeMaskType={activeMaskType}
-          onMaskTypeChange={handleMaskTypeChange}
-          isMaskTypeChanging={isMaskTypeChanging}
-          isCollapsed={sidebarCollapsed}
-          onCollapseChange={setSidebarCollapsed}
-          patientSearchShowing={patientSearchShowing}
-          onPatientSearchToggle={togglePatientSearch}
-        />
-      )}
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
+      <LeftSidebar
+        ref={sidebarRef}
+        filterShowing={filterShowing}
+        dataShowing={dataShowing}
+        patientSearchShowing={patientSearchShowing}
+        onFilterToggle={toggleFilter}
+        onDataToggle={toggleData}
+        onPatientSearchToggle={togglePatientSearch}
+        activeViewType={"surface"}
+        onViewTypeChange={() => {}}
+        activeMaskType={activeMaskType}
+        onMaskTypeChange={handleMaskTypeChange}
+        isMaskTypeChanging={isMaskTypeChanging}
+        isCollapsed={sidebarCollapsed}
+        onCollapseChange={setSidebarCollapsed}
+      />
 
-      {/* Brain Views */}
-      {activeViewType === 'surface' && (
+      <main 
+        ref={mainContentRef}
+        className="flex-1 flex flex-col relative transition-all duration-300 ease-in-out"
+        style={{ marginLeft: sidebarWidth }}
+      >
         <iframe
           ref={iframeRef}
-          key={activeFilterId}
-          src='/api/viewer'
-          style={{
-              gridArea: '1 / 1 / 2 / 2',
-              width: '100%',
-              height: '100%',
-              border: 'none',
-              zIndex: 0,
-              ...responsiveStyle
-          }}
-          title={`Pycortex WebGL Viewer`}
+          src="/api/viewer"
+          className="w-full h-full border-none transition-transform duration-300 ease-in-out"
+          title="Brain Viewer"
+          style={{ transform: `translateX(${iframeTranslateX}vw)` }}
         />
-      )}
+      </main>
 
-      {activeViewType === 'glass' && (
-          <div 
-            style={{ 
-              gridArea: '1 / 1 / 2 / 2', 
-              width: '100%', 
-              height: '100%', 
-              zIndex: 0,
-              ...responsiveStyle
-            }}
-          >
-              <GlassBrainViewer />
-          </div>
-      )}
+      <div>
+        {filterShowing && (
+          <DynamicFilter
+            filterShowing={filterShowing}
+            toggleFilter={setFilterShowing}
+            activeFilterId={activeFilterId}
+            onFilterChange={handleFilterChange}
+            onWidthChange={setFilterWidth}
+            onFullScreenChange={setIsFilterFullScreen}
+            activeMaskType={activeMaskType}
+            sidebarWidth={sidebarWidth}
+          />
+        )}
 
-      {/* Panel Container */}
-      <div style={{ gridArea: '1 / 1 / 2 / 2', width: '100%', height: '100%', border: 'none', zIndex: 10, pointerEvents: 'none' }}>
-        <DynamicFilter
-          filterShowing={filterShowing}
-          toggleFilter={setFilterShowing}
-          activeFilterId={activeFilterId}
-          onFilterChange={handleFilterChange}
-          onWidthChange={setFilterWidth}
-          onFullScreenChange={setIsFilterFullScreen}
-          activeMaskType={activeMaskType}
-          sidebarWidth={sidebarCollapsed ? 64 : 192}
-        />
-        <DataView 
-          dataShowing={dataShowing} 
-          toggleData={setDataShowing}
-          onWidthChange={setDataWidth}
-          onFullScreenChange={setIsDataFullScreen}
-          sidebarWidth={sidebarCollapsed ? 64 : 192}
-        />
-        <PatientSearch
-          patientSearchShowing={patientSearchShowing}
-          togglePatientSearch={setPatientSearchShowing}
-          onWidthChange={setPatientSearchWidth}
-          onFullScreenChange={setIsPatientSearchFullScreen}
-          sidebarWidth={sidebarCollapsed ? 64 : 192}
-        />
+        {dataShowing && (
+          <DataView
+            dataShowing={dataShowing}
+            toggleData={setDataShowing}
+            onWidthChange={setDataWidth}
+            onFullScreenChange={setIsDataFullScreen}
+            sidebarWidth={sidebarWidth}
+          />
+        )}
+
+        {patientSearchShowing && (
+          <PatientSearch
+            patientSearchShowing={patientSearchShowing}
+            togglePatientSearch={setPatientSearchShowing}
+            onWidthChange={setPatientSearchWidth}
+            onFullScreenChange={setIsPatientSearchFullScreen}
+            sidebarWidth={sidebarWidth}
+          />
+        )}
       </div>
     </div>
   );

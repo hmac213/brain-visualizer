@@ -1,5 +1,5 @@
-import React from 'react';
-import { SlidersHorizontal, BarChart3, Brain, Pill, Stethoscope, Loader2, PanelRightClose, PanelRightOpen, Users } from 'lucide-react';
+import React, { forwardRef } from 'react';
+import { SlidersHorizontal, BarChart3, Brain, Pill, Stethoscope, Loader2, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 
 interface LeftSidebarProps {
   filterShowing: boolean;
@@ -17,10 +17,9 @@ interface LeftSidebarProps {
   onPatientSearchToggle?: () => void;
 }
 
-export default function LeftSidebar(props: LeftSidebarProps) {
+export default forwardRef<HTMLDivElement, LeftSidebarProps>(function LeftSidebar(props, ref) {
   const handleFilterClick = () => {
     if (props.dataShowing) {
-      // Close data panel first, then open filter
       props.onDataToggle();
     }
     props.onFilterToggle();
@@ -28,7 +27,6 @@ export default function LeftSidebar(props: LeftSidebarProps) {
 
   const handleDataClick = () => {
     if (props.filterShowing) {
-      // Close filter panel first, then open data
       props.onFilterToggle();
     }
     props.onDataToggle();
@@ -45,182 +43,203 @@ export default function LeftSidebar(props: LeftSidebarProps) {
   };
 
   return (
-    <div className={`fixed left-0 top-0 h-full bg-[#2774AE] flex flex-col items-center py-4 z-50 transition-all duration-300 ${
-      props.isCollapsed ? 'w-16' : 'w-48'
+    <div ref={ref} className={`fixed left-0 top-0 h-full bg-gradient-to-b from-[#2774AE] to-[#1e5a8a] flex flex-col z-50 transition-all duration-300 ease-in-out shadow-xl ${
+      props.isCollapsed ? 'w-20' : 'w-64'
     }`}>
-      {/* Collapse Toggle Button */}
-      <button
-        onClick={toggleCollapse}
-        className="absolute left-full top-8 ml-4 bg-white text-[#2774AE] rounded-full px-3 py-2 shadow transition-colors z-10 border border-[#2774AE] hover:bg-[#e3eef8]"
-        title={props.isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-        style={{ borderRadius: '9999px' }}
-      >
-        {props.isCollapsed ? (
-          <PanelRightOpen className="w-5 h-5" />
-        ) : (
-          <PanelRightClose className="w-5 h-5" />
+      {/* Header with Logo and Collapse Button */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-white/10">
+        {!props.isCollapsed && (
+          <div className="flex items-center justify-center flex-1">
+            <img 
+              src='/UCLA_logo.svg' 
+              className="w-16 h-16" 
+              alt="UCLA logo" 
+            />
+          </div>
         )}
-      </button>
+        
+        {props.isCollapsed && (
+          <img 
+            src='/UCLA_logo.svg' 
+            className="w-10 h-10 mx-auto" 
+            alt="UCLA logo" 
+          />
+        )}
+        
+        <button
+          onClick={toggleCollapse}
+          className="text-white/70 hover:text-white hover:bg-white/10 rounded-lg p-1.5 transition-all duration-200 ease-in-out"
+          title={props.isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+        >
+          {props.isCollapsed ? (
+            <ChevronRight className="w-5 h-5" />
+          ) : (
+            <ChevronLeft className="w-5 h-5" />
+          )}
+        </button>
+      </div>
 
-      {/* Navigation Icons */}
-      <div className="flex flex-col space-y-4 w-full px-3">
+      {/* Navigation Section */}
+      <div className={`flex flex-col space-y-2 ${props.isCollapsed ? 'px-3 py-4' : 'p-4'}`}>
+        {!props.isCollapsed && (
+          <h3 className="text-white/60 text-xs font-medium uppercase tracking-wider mb-2">
+            Navigation
+          </h3>
+        )}
+        
         {/* Filters Button */}
         <button
           onClick={handleFilterClick}
-          className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-            props.isCollapsed ? 'justify-center' : 'justify-start text-left'
-          } ${
+          className={`group flex items-center space-x-3 transition-all duration-200 ease-in-out ${
+            props.isCollapsed ? 'justify-center p-2.5' : 'justify-start px-3 py-2.5'
+          } rounded-xl ${
             props.filterShowing 
-              ? 'bg-white text-[#2774AE] shadow' 
-              : 'text-white hover:bg-white hover:text-[#2774AE] hover:shadow'
+              ? 'bg-white/15 text-white border border-white/20 shadow-lg backdrop-blur-sm' 
+              : 'text-white/80 hover:text-white hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98]'
           }`}
-          style={{ transition: 'background 0.2s, color 0.2s' }}
           title="Toggle Filters"
         >
-          <SlidersHorizontal className="w-6 h-6" />
-          {!props.isCollapsed && <span className="text-sm font-medium">Filters</span>}
+          <SlidersHorizontal className={`transition-transform group-hover:rotate-3 ${props.isCollapsed ? 'w-6 h-6' : 'w-5 h-5'}`} />
+          {!props.isCollapsed && (
+            <span className="text-sm font-medium">Filters</span>
+          )}
         </button>
 
         {/* Charts Button */}
         <button
           onClick={handleDataClick}
-          className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-            props.isCollapsed ? 'justify-center' : 'justify-start text-left'
-          } ${
+          className={`group flex items-center space-x-3 transition-all duration-200 ease-in-out ${
+            props.isCollapsed ? 'justify-center p-2.5' : 'justify-start px-3 py-2.5'
+          } rounded-xl ${
             props.dataShowing 
-              ? 'bg-white text-[#2774AE] shadow' 
-              : 'text-white hover:bg-white hover:text-[#2774AE] hover:shadow'
+              ? 'bg-white/15 text-white border border-white/20 shadow-lg backdrop-blur-sm' 
+              : 'text-white/80 hover:text-white hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98]'
           }`}
-          style={{ transition: 'background 0.2s, color 0.2s' }}
           title="Toggle Charts"
         >
-          <BarChart3 className="w-6 h-6" />
-          {!props.isCollapsed && <span className="text-sm font-medium">Charts</span>}
+          <BarChart3 className={`transition-transform group-hover:scale-110 ${props.isCollapsed ? 'w-6 h-6' : 'w-5 h-5'}`} />
+          {!props.isCollapsed && (
+            <span className="text-sm font-medium">Charts</span>
+          )}
         </button>
 
         {/* Patient Statistics Button */}
         <button
           onClick={handlePatientStatsClick}
-          className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-            props.isCollapsed ? 'justify-center' : 'justify-start text-left'
-          } ${
+          className={`group flex items-center space-x-3 transition-all duration-200 ease-in-out ${
+            props.isCollapsed ? 'justify-center p-2.5' : 'justify-start px-3 py-2.5'
+          } rounded-xl ${
             props.patientSearchShowing
-              ? 'bg-white text-[#2774AE] shadow'
-              : 'text-white hover:bg-white hover:text-[#2774AE] hover:shadow'
+              ? 'bg-white/15 text-white border border-white/20 shadow-lg backdrop-blur-sm'
+              : 'text-white/80 hover:text-white hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98]'
           }`}
-          style={{ transition: 'background 0.2s, color 0.2s' }}
           title="Patient Statistics"
         >
-          <Users className="w-6 h-6" />
-          {!props.isCollapsed && <span className="text-sm font-medium">Patient Stats</span>}
+          <Users className={`transition-transform group-hover:scale-110 ${props.isCollapsed ? 'w-6 h-6' : 'w-5 h-5'}`} />
+          {!props.isCollapsed && (
+            <span className="text-sm font-medium">Patient Stats</span>
+          )}
         </button>
       </div>
 
-      {/* Mask Type Selection */}
-      <div className="flex flex-col items-center space-y-3 mt-8 w-full px-3">
-        {/* Section Header */}
-        <div className="w-full">
-          {props.isCollapsed ? (
-            <div className="text-white text-[10px] font-medium text-center px-1 leading-tight">
-              MASKS
-            </div>
-          ) : (
-            <div className="text-white text-xs font-semibold uppercase tracking-wide border-b border-white/20 pb-2">
-              Mask Types
-            </div>
-          )}
-        </div>
+      {/* Mask Types Section */}
+      <div className={`flex flex-col border-t border-white/10 ${props.isCollapsed ? 'px-3 py-4' : 'p-4'}`}>
+        {!props.isCollapsed && (
+          <h3 className="text-white/60 text-xs font-medium uppercase tracking-wider mb-3">
+            Mask Types
+          </h3>
+        )}
         
-        {props.isMaskTypeChanging && (
-          <div className="flex items-center justify-center py-1">
-            <Loader2 className="w-3 h-3 text-white animate-spin" />
+        {props.isCollapsed && (
+          <div className="text-white/60 text-[10px] font-medium text-center mb-3 uppercase tracking-wide">
+            Masks
           </div>
         )}
         
-        {/* Mask Buttons Container */}
-        <div className="flex flex-col space-y-2 w-full">
+        {props.isMaskTypeChanging && (
+          <div className="flex items-center justify-center py-2 mb-2">
+            <Loader2 className="w-4 h-4 text-white/70 animate-spin" />
+            {!props.isCollapsed && (
+              <span className="ml-2 text-xs text-white/70">Loading...</span>
+            )}
+          </div>
+        )}
+        
+        <div className="flex flex-col space-y-2">
           {/* Tumor Mask */}
           <button
-            onClick={() => {
-              console.log("Tumor mask button clicked");
-              props.onMaskTypeChange('tumor');
-            }}
+            onClick={() => props.onMaskTypeChange('tumor')}
             disabled={props.isMaskTypeChanging}
-            className={`flex items-center space-x-3 p-2 rounded-md transition-all duration-200 ${
-              props.isCollapsed ? 'justify-center' : 'justify-start text-left'
-            } ${
+            className={`group flex items-center space-x-2.5 transition-all duration-200 ease-in-out ${
+              props.isCollapsed ? 'justify-center p-2' : 'justify-start px-3 py-2'
+            } rounded-lg ${
               props.activeMaskType === 'tumor'
-                ? 'bg-white text-[#2774AE] shadow-sm' 
+                ? 'bg-white/20 text-white border border-white/30 shadow-md' 
                 : props.isMaskTypeChanging
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-white hover:bg-white hover:text-[#2774AE] hover:shadow-sm'
+                  ? 'text-white/40 cursor-not-allowed'
+                  : 'text-white/70 hover:text-white hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98]'
             }`}
-            style={{ transition: 'background 0.2s, color 0.2s' }}
             title="Tumor Masks"
           >
-            <Brain className="w-4 h-4" />
-            {!props.isCollapsed && <span className="text-sm">Tumor</span>}
+            <Brain className={`transition-transform group-hover:scale-110 ${props.isCollapsed ? 'w-6 h-6' : 'w-4 h-4'}`} />
+            {!props.isCollapsed && (
+              <span className="text-sm font-medium">Tumor</span>
+            )}
           </button>
 
           {/* MRI Mask */}
           <button
-            onClick={() => {
-              console.log("MRI mask button clicked");
-              props.onMaskTypeChange('mri');
-            }}
+            onClick={() => props.onMaskTypeChange('mri')}
             disabled={props.isMaskTypeChanging}
-            className={`flex items-center space-x-3 p-2 rounded-md transition-all duration-200 ${
-              props.isCollapsed ? 'justify-center' : 'justify-start text-left'
-            } ${
+            className={`group flex items-center space-x-2.5 transition-all duration-200 ease-in-out ${
+              props.isCollapsed ? 'justify-center p-2' : 'justify-start px-3 py-2'
+            } rounded-lg ${
               props.activeMaskType === 'mri'
-                ? 'bg-white text-[#2774AE] shadow-sm' 
+                ? 'bg-white/20 text-white border border-white/30 shadow-md' 
                 : props.isMaskTypeChanging
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-white hover:bg-white hover:text-[#2774AE] hover:shadow-sm'
+                  ? 'text-white/40 cursor-not-allowed'
+                  : 'text-white/70 hover:text-white hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98]'
             }`}
-            style={{ transition: 'background 0.2s, color 0.2s' }}
             title="MRI Masks"
           >
-            <Stethoscope className="w-4 h-4" />
-            {!props.isCollapsed && <span className="text-sm">MRI</span>}
+            <Stethoscope className={`transition-transform group-hover:scale-110 ${props.isCollapsed ? 'w-6 h-6' : 'w-4 h-4'}`} />
+            {!props.isCollapsed && (
+              <span className="text-sm font-medium">MRI</span>
+            )}
           </button>
 
           {/* Dose Mask */}
           <button
-            onClick={() => {
-              console.log("Dose mask button clicked");
-              props.onMaskTypeChange('dose');
-            }}
+            onClick={() => props.onMaskTypeChange('dose')}
             disabled={props.isMaskTypeChanging}
-            className={`flex items-center space-x-3 p-2 rounded-md transition-all duration-200 ${
-              props.isCollapsed ? 'justify-center' : 'justify-start text-left'
-            } ${
+            className={`group flex items-center space-x-2.5 transition-all duration-200 ease-in-out ${
+              props.isCollapsed ? 'justify-center p-2' : 'justify-start px-3 py-2'
+            } rounded-lg ${
               props.activeMaskType === 'dose'
-                ? 'bg-white text-[#2774AE] shadow-sm' 
+                ? 'bg-white/20 text-white border border-white/30 shadow-md' 
                 : props.isMaskTypeChanging
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-white hover:bg-white hover:text-[#2774AE] hover:shadow-sm'
+                  ? 'text-white/40 cursor-not-allowed'
+                  : 'text-white/70 hover:text-white hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98]'
             }`}
-            style={{ transition: 'background 0.2s, color 0.2s' }}
             title="Dose Masks"
           >
-            <Pill className="w-4 h-4" />
-            {!props.isCollapsed && <span className="text-sm">Dose</span>}
+            <Pill className={`transition-transform group-hover:scale-110 ${props.isCollapsed ? 'w-6 h-6' : 'w-4 h-4'}`} />
+            {!props.isCollapsed && (
+              <span className="text-sm font-medium">Dose</span>
+            )}
           </button>
         </div>
       </div>
 
-      {/* Spacer to push logo to bottom */}
+      {/* Spacer */}
       <div className="flex-1"></div>
 
-      {/* UCLA Logo at bottom */}
-      <div className="mb-4">
-        <img 
-          src='/UCLA_logo.svg' 
-          className="w-10 h-10 filter brightness-0 invert" 
-          alt="UCLA logo" 
-        />
+      {/* Footer */}
+      <div className="p-4 border-t border-white/10">
+        <div className="text-white/40 text-xs text-center">
+          {props.isCollapsed ? 'v1.0' : 'Brain Visualizer v1.0'}
+        </div>
       </div>
     </div>
   );
-} 
+}); 

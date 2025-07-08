@@ -266,7 +266,7 @@ export default function PatientSearch(props: PatientSearchProps) {
 
   return props.patientSearchShowing ? (
     <div
-      className={`fixed top-0 h-screen bg-white shadow-lg relative ${
+      className={`fixed top-0 h-screen bg-white shadow-lg ${
         !isFullScreen ? '' : 'w-full'
       }`}
       style={{ 
