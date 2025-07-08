@@ -21,6 +21,7 @@ services:
       context: ./backend
     depends_on:
       - db
+      - redis
     environment:
       - DATABASE_URL=postgresql://myuser:mypassword@db:5432/brain_dev
     ports:
@@ -45,6 +46,14 @@ services:
       - db_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    networks:
+      - app-network
+
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
     networks:
       - app-network
 

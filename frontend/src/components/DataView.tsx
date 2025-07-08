@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Chart from './chart';
+import Chart from './Chart';
 import { LayoutGrid, StretchHorizontal, Maximize2, X } from 'lucide-react'
 import NewChartModal from './NewChartModal';
 import { useResizable } from '../hooks/useResizable';
