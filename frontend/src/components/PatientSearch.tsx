@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X, Maximize2, User, Loader2, ArrowLeft, Calendar, Heart, Ruler, Weight, Activity, Eye, Brain, Pill } from 'lucide-react';
+import { Search, X, Maximize2, User, Loader2, ArrowLeft, Calendar, Heart, Ruler, Weight, Activity, Eye, Brain, Pill, Play } from 'lucide-react';
 import { useResizable } from '../hooks/useResizable';
 import BrainViewerModal from './BrainViewerModal';
 
@@ -490,7 +490,16 @@ export default function PatientSearch(props: PatientSearchProps) {
 
                   {/* MRI Timeline */}
                   <div className='space-y-4'>
-                    <h3 className='text-lg font-semibold text-gray-900'>MRI Timeline</h3>
+                    <div className="flex justify-between items-center">
+                      <h3 className='text-lg font-semibold text-gray-900'>MRI Timeline</h3>
+                      <button
+                        // onClick={() => handlePlayMRI()} // Add your onClick handler here
+                        className='p-2 text-[#2774AE] hover:bg-[#2774AE] hover:text-white rounded-md transition-colors'
+                        title='Play MRI Timeline'
+                      >
+                        <Play className='w-4 h-4' />
+                      </button>
+                    </div>
                     {mriTimeline.length > 0 ? (
                       <div className='space-y-2'>
                         {mriTimeline.map((mri) => (
@@ -521,7 +530,16 @@ export default function PatientSearch(props: PatientSearchProps) {
 
                   {/* Tumor Summary */}
                   <div className='space-y-4'>
-                    <h3 className='text-lg font-semibold text-gray-900'>Tumor Summary</h3>
+                    <div className="flex justify-between items-center">
+                      <h3 className='text-lg font-semibold text-gray-900'>Tumor Summary</h3>
+                      <button
+                        // onClick={() => handlePlayTumor()} // Add your onClick handler here
+                        className='p-2 text-green-600 hover:bg-green-600 hover:text-white rounded-md transition-colors'
+                        title='Play Tumor Timeline'
+                      >
+                        <Play className='w-4 h-4' />
+                      </button>
+                    </div>
                     {tumorList.length > 0 ? (
                       <div className='space-y-2'>
                         {tumorList.map((tumor) => (
@@ -552,7 +570,16 @@ export default function PatientSearch(props: PatientSearchProps) {
 
                   {/* Treatment Summary */}
                   <div className='space-y-4'>
-                    <h3 className='text-lg font-semibold text-gray-900'>Treatment Summary</h3>
+                    <div className="flex justify-between items-center">
+                      <h3 className='text-lg font-semibold text-gray-900'>Treatment Summary</h3>
+                      <button
+                        // onClick={() => handlePlayTreatment()} // Add your onClick handler here
+                        className='p-2 text-purple-600 hover:bg-purple-600 hover:text-white rounded-md transition-colors'
+                        title='Play Treatment Timeline'
+                      >
+                        <Play className='w-4 h-4' />
+                      </button>
+                    </div>
                     {treatmentList.length > 0 ? (
                       <div className='space-y-2'>
                         {treatmentList.map((treatment) => (
