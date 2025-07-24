@@ -142,6 +142,48 @@ export default forwardRef<HTMLDivElement, LeftSidebarProps>(function LeftSidebar
         </button>
       </div>
 
+      {/* View Types Section */}
+      <div className={`flex flex-col border-t border-white/10 ${props.isCollapsed ? 'px-3 py-4' : 'p-4'}`}>
+        {!props.isCollapsed && (
+          <h3 className="text-white/60 text-xs font-medium uppercase tracking-wider mb-3">
+            View Types
+          </h3>
+        )}
+        
+        {props.isCollapsed && (
+          <div className="text-white/60 text-[10px] font-medium text-center mb-3 uppercase tracking-wide">
+            View
+          </div>
+        )}
+        
+        <div className={`rounded-lg p-1 flex transition-all duration-300 ${props.isCollapsed ? 'flex-col space-y-2' : 'flex-row bg-black/20'}`}>
+          <button
+            onClick={() => props.onViewTypeChange('surface')}
+            className={`flex-1 text-sm py-1.5 px-2 rounded-md transition-all duration-200 ease-in-out flex items-center gap-2 ${props.isCollapsed ? 'justify-center' : ''} ${
+              props.activeViewType === 'surface'
+                ? 'bg-white/90 text-blue-900 font-semibold shadow-md'
+                : 'text-white/70 hover:bg-white/10 hover:text-white'
+            }`}
+            title="Surface View"
+          >
+            <Brain className="w-4 h-4" />
+            {!props.isCollapsed && 'Surface'}
+          </button>
+          <button
+            onClick={() => props.onViewTypeChange('glass')}
+            className={`flex-1 text-sm py-1.5 px-2 rounded-md transition-all duration-200 ease-in-out flex items-center gap-2 ${props.isCollapsed ? 'justify-center' : ''} ${
+              props.activeViewType === 'glass'
+                ? 'bg-white/90 text-blue-900 font-semibold shadow-md'
+                : 'text-white/70 hover:bg-white/10 hover:text-white'
+            }`}
+            title="Glass Brain View"
+          >
+            <Brain className="w-4 h-4 opacity-70" />
+            {!props.isCollapsed && 'Glass'}
+          </button>
+        </div>
+      </div>
+
       {/* Mask Types Section */}
       <div className={`flex flex-col border-t border-white/10 ${props.isCollapsed ? 'px-3 py-4' : 'p-4'}`}>
         {!props.isCollapsed && (

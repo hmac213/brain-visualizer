@@ -1,14 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import Filter from '@/components/Filter';
+import Filter from '@/components/filter';
 import DataView from '@/components/DataView';
 import PatientSearch from '@/components/PatientSearch';
 import LeftSidebar from '@/components/LeftSidebar';
 import dynamic from 'next/dynamic';
 
-const DynamicFilter = dynamic(() => import('@/components/Filter'), {
+const DynamicFilter = dynamic(() => import('@/components/filter'), {
   ssr: false
+});
+
+const GlassBrainViewer = dynamic(() => import('@/components/GlassBrainViewer'), {
+  ssr: false,
+  loading: () => <div className="w-full h-full flex items-center justify-center">Loading 3D Viewer...</div>,
 });
 
 export default function Viewer() {
@@ -23,6 +28,7 @@ export default function Viewer() {
   const [isDataFullScreen, setIsDataFullScreen] = useState(false);
   const [isPatientSearchFullScreen, setIsPatientSearchFullScreen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeViewType, setActiveViewType] = useState<string>('surface');
   const [activeMaskType, setActiveMaskType] = useState<string>('tumor');
   const [isMaskTypeChanging, setIsMaskTypeChanging] = useState<boolean>(false);
   const [isClient, setIsClient] = useState(false);
@@ -103,6 +109,10 @@ export default function Viewer() {
     }
   };
 
+  const handleViewTypeChange = (newViewType: string) => {
+    setActiveViewType(newViewType);
+  };
+
   const toggleFilter = () => {
     if (dataShowing) setDataShowing(false);
     if (patientSearchShowing) setPatientSearchShowing(false);
@@ -155,8 +165,8 @@ export default function Viewer() {
         onFilterToggle={toggleFilter}
         onDataToggle={toggleData}
         onPatientSearchToggle={togglePatientSearch}
-        activeViewType={"surface"}
-        onViewTypeChange={() => {}}
+        activeViewType={activeViewType}
+        onViewTypeChange={handleViewTypeChange}
         activeMaskType={activeMaskType}
         onMaskTypeChange={handleMaskTypeChange}
         isMaskTypeChanging={isMaskTypeChanging}
@@ -169,13 +179,22 @@ export default function Viewer() {
         className="flex-1 flex flex-col relative transition-all duration-300 ease-in-out"
         style={{ marginLeft: sidebarWidth }}
       >
-        <iframe
-          ref={iframeRef}
-          src="/api/viewer"
-          className="w-full h-full border-none transition-transform duration-300 ease-in-out"
-          title="Brain Viewer"
-          style={{ transform: `translateX(${iframeTranslateX}vw)` }}
-        />
+        {activeViewType === 'surface' ? (
+          <iframe
+            ref={iframeRef}
+            src="/api/viewer"
+            className="w-full h-full border-none transition-transform duration-300 ease-in-out"
+            title="Brain Viewer"
+            style={{ transform: `translateX(${iframeTranslateX}vw)` }}
+          />
+        ) : (
+          <div 
+            className="w-full h-full transition-transform duration-300 ease-in-out" 
+            style={{ transform: `translateX(${iframeTranslateX}vw)` }}
+          >
+            <GlassBrainViewer />
+          </div>
+        )}
       </main>
 
       <div>
