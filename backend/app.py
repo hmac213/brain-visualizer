@@ -5,10 +5,12 @@ import json
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from redis_cache import RedisCache
+import logging
 
 redis_cache = RedisCache()
 
 app = Flask(__name__)
+app.logger.setLevel(logging.INFO)
 CORS(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']

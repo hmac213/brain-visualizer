@@ -49,19 +49,17 @@ def get_volume_data():
         if not current_filter_id:
             return jsonify({"error": "No ID found in current filter."}), 400
 
-        # Assuming 'tumor' is the desired mask type for solid rendering
         nifti_file_path = os.path.join(
             '/app/filestore', 
             'tumor_mask_cache',
             f"{current_filter_id}.nii.gz"
         )
-
         if not os.path.exists(nifti_file_path):
             return jsonify({"error": f"Mask file not found at: {nifti_file_path}"}), 404
-
+        
         nii_img = nib.load(nifti_file_path)
         nii_data = nii_img.get_fdata(dtype=np.float32)
-        
+
         min_val, max_val = np.min(nii_data), np.max(nii_data)
         if max_val > min_val:
              normalized_data = (nii_data - min_val) / (max_val - min_val)
