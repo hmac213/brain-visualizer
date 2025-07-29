@@ -44,6 +44,7 @@ interface TreatmentItem {
   id: string;
   type: string;
   dose?: number;
+  volume_mm3?: number;
   date?: string;
 }
 
@@ -219,7 +220,9 @@ export default function PatientSearch(props: PatientSearchProps) {
   const handleViewTreatment = (treatmentId: string) => {
     // Find the treatment data for the title
     const treatmentData = treatmentList.find(treatment => treatment.id === treatmentId);
-    const title = treatmentData ? `Treatment - ${treatmentData.type}` : `Dose Mask`;
+    const title = treatmentData ? 
+      `Treatment - ${treatmentData.type} (${treatmentData.dose} Gy)` : 
+      `Dose Mask`;
     
     setViewerData({
       niftiId: treatmentId,
@@ -590,6 +593,7 @@ export default function PatientSearch(props: PatientSearchProps) {
                                 <div className='text-sm font-medium text-gray-900'>{treatment.type}</div>
                                 <div className='text-xs text-gray-500'>
                                   {treatment.dose && `${treatment.dose} Gy`}
+                                  {treatment.volume_mm3 && ` • ${treatment.volume_mm3.toFixed(1)} mm³`}
                                   {treatment.date && ` • ${formatDate(treatment.date)}`}
                                 </div>
                               </div>

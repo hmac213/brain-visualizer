@@ -220,7 +220,7 @@ def get_patient_treatments(patient_id):
         patient_id (str): The patient UUID
     
     Returns:
-        dict: Treatment information (currently empty as treatments aren't tracked)
+        dict: Treatment information from dose mask data
     """
     try:
         # Validate UUID format
@@ -229,13 +229,35 @@ def get_patient_treatments(patient_id):
         except ValueError:
             return {'error': 'Invalid patient ID format'}
         
-        # For now, return empty list since treatments aren't tracked in the database
-        # This can be expanded when you add treatment tracking
+        # Query dose mask data for the patient
+        treatments = db.session.query(
+            NiftiData.id,
+            DoseMask.max_dose,
+            DoseMask.volume_mm3
+        ).join(
+            DoseMask, DoseMask.id == NiftiData.id
+        ).filter(
+            NiftiData.patient_id == patient_id,
+            NiftiData.series_type == 'dose_mask'
+        ).order_by(
+            DoseMask.max_dose.desc()  # Highest dose first
+        ).all()
+        
+        # Format results
+        formatted_treatments = []
+        for treatment_id, max_dose, volume in treatments:
+            formatted_treatments.append({
+                'id': str(treatment_id),
+                'type': 'Radiation Therapy',
+                'dose': max_dose,
+                'volume_mm3': volume,
+                'date': None  # Dose masks don't have dates in current schema
+            })
+        
         return {
             'patient_id': patient_id,
-            'treatments': [],
-            'total_treatments': 0,
-            'note': 'Treatment tracking not yet implemented in database'
+            'treatments': formatted_treatments,
+            'total_treatments': len(formatted_treatments)
         }
         
     except Exception as e:
