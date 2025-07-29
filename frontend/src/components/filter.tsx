@@ -520,7 +520,7 @@ export default function Filter(props: FilterProps) {
 
         {/* Modal Popup for Viewing a Filter's Criteria */}
         {modalFilter && (
-          <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30' style={{ zIndex: 60 }}>
+          <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30' style={{ zIndex: 100 }}>
             <div className='bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto'>
               <div className='flex justify-between items-center mb-6'>
                 <h2 className='text-xl font-semibold text-gray-900'>{modalFilter.name}</h2>
@@ -669,7 +669,7 @@ export default function Filter(props: FilterProps) {
 
         {/* Modal Popup for Creating a New Filter */}
         {newFilterModal && filterOptions && (
-          <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30' style={{ zIndex: 60 }}>
+          <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30' style={{ zIndex: 100 }}>
             <div className='bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full mx-4 overflow-y-auto max-h-[80vh]'>
               <div className='flex justify-between items-center mb-4'>
                 <h2 className='text-lg font-semibold'>Create New Filter</h2>
@@ -745,7 +745,7 @@ export default function Filter(props: FilterProps) {
 
         {/* Modal Popup for Editing a Filter */}
         {editFilterModal && filterOptions && (
-          <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30' style={{ zIndex: 60 }}>
+          <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30' style={{ zIndex: 100 }}>
             <div className='bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full mx-4 overflow-y-auto max-h-[80vh]'>
               <div className='flex justify-between items-center mb-4'>
                 <h2 className='text-lg font-semibold'>Edit Filter</h2>

@@ -102,7 +102,7 @@ export const useResizable = ({
           : 'hover:bg-gray-400 border-l border-r border-gray-400'
       }`}
       style={{ 
-        zIndex: 9999,
+        zIndex: 60,
         left: 'calc(100% - 12px)',
         pointerEvents: 'auto',
         transition: isResizing ? 'none' : 'all 0.2s'

@@ -249,7 +249,7 @@ export default function NewChartModal({ isOpen, onClose, onChartCreated }: NewCh
   if (!isOpen) return null;
   
   return (
-    <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30 z-50'>
+    <div className='fixed inset-0 flex justify-center items-center bg-black bg-opacity-30 z-[100]'>
       <div className='bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full overflow-y-auto max-h-[80vh]'>
         <div className='flex justify-between items-center mb-4'>
           <h2 className='text-lg font-semibold'>Create New Chart</h2>
