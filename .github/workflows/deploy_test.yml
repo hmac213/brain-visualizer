@@ -29,8 +29,7 @@ jobs:
       - name: Restart services on droplet
         run: |
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
-            root@${{ secrets.DO_DEPLOY_HOST }} << 'EOF'
-              set -e
-              cd ${{ secrets.DO_DEPLOY_PATH }}
-              docker compose up -d --build
-            EOF
+            root@${{ secrets.DO_DEPLOY_HOST }} \
+              "set -e && \
+              cd ${{ secrets.DO_DEPLOY_PATH }} && \
+              docker compose up -d --build"
