@@ -1,4 +1,4 @@
-name: Deploy to DigitalOcean
+name: Deploy to DigitalOcean via rsync
 
 on:
   push:
@@ -18,16 +18,19 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.DO_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.DO_DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy via SSH as root
+      - name: Sync code to droplet
         run: |
-          ssh -i ~/.ssh/id_ed25519 root@${{ secrets.DO_DEPLOY_HOST }} << 'EOF'
-            set -e
-            cd ${{ secrets.DO_DEPLOY_PATH }}
-            git fetch --prune
-            git checkout main
-            git reset --hard origin/main
-            docker compose pull
-            docker compose up -d --build
-          EOF
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" \
+            ./ \
+            root@${{ secrets.DO_DEPLOY_HOST }}:${{ secrets.DO_DEPLOY_PATH }}/
+
+      - name: Restart services on droplet
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+            root@${{ secrets.DO_DEPLOY_HOST }} << 'EOF'
+              set -e
+              cd ${{ secrets.DO_DEPLOY_PATH }}
+              docker compose up -d --build
+            EOF
