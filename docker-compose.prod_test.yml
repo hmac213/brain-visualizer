@@ -1,0 +1,10 @@
+services:
+  frontend:
+    volumes:
+      - frontend_node_modules:/src/node_modules
+      - frontend_next_cache:/src/.next
+
+  backend:
+    volumes:
+      - ./backend/src/app/custom_templates:/app/custom_templates
+      - /mnt/nifti_filestore:/app/filestore
