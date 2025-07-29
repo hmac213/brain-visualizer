@@ -49,9 +49,19 @@ def get_volume_data():
         if not current_filter_id:
             return jsonify({"error": "No ID found in current filter."}), 400
 
+        # Map mask types to cache directories
+        cache_subdirs = {
+            'tumor': 'tumor_mask_cache',
+            'mri': 'mri_mask_cache', 
+            'dose': 'dose_mask_cache'
+        }
+        
+        current_mask_type = current_app.config.get('CURRENT_MASK_TYPE', 'tumor')
+        cache_subdir = cache_subdirs.get(current_mask_type, 'tumor_mask_cache')
+        
         nifti_file_path = os.path.join(
             '/app/filestore', 
-            'tumor_mask_cache',
+            cache_subdir,
             f"{current_filter_id}.nii.gz"
         )
         if not os.path.exists(nifti_file_path):

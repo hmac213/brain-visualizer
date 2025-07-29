@@ -51,6 +51,8 @@ def req_visualize_brain(nifti_id_str=None, nifti_dir=None):
         current_filter_id = ''
         for id in current_filter:
             current_filter_id = id
+        
+        current_app.logger.info(f"Using filter ID: {current_filter_id}, mask type: {current_mask_type}")
 
         redis_key = f'viewer_cache:{current_filter_id}_{current_mask_type}'
         if redis_cache.path_exists(redis_key):
@@ -82,6 +84,13 @@ def req_visualize_brain(nifti_id_str=None, nifti_dir=None):
             cache_subdir,
             f"{current_filter_id}.nii.gz"
         )
+        
+        # Check if file exists before trying to load it
+        current_app.logger.info(f"Checking for NIfTI file at: {nifti_file_path}")
+        if not os.path.exists(nifti_file_path):
+            current_app.logger.error(f"NIfTI file not found at: {nifti_file_path}")
+            from flask import abort
+            abort(404)
 
     try:
         current_nii = load_nifti(nifti_file_path)
@@ -110,6 +119,7 @@ def req_visualize_brain(nifti_id_str=None, nifti_dir=None):
         return send_from_directory(session_out_path, 'index.html')
         
     except Exception as e:
+        current_app.logger.error(f"Error in /viewer: {e}")
         from flask import abort
         abort(500)
 
