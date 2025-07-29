@@ -16,6 +16,10 @@ interface MeshData {
     faces: number[][];
 }
 
+interface GlassBrainViewerProps {
+    refreshTrigger?: number;
+}
+
 interface BrainMeshProps {
     geometry: THREE.BufferGeometry;
     position: THREE.Vector3;
@@ -40,7 +44,7 @@ const BrainMesh = React.forwardRef<THREE.Mesh, BrainMeshProps>(({ geometry, posi
 });
 BrainMesh.displayName = 'BrainMesh';
 
-export default function GlassBrainViewer() {
+export default function GlassBrainViewer({ refreshTrigger = 0 }: GlassBrainViewerProps) {
     const brainMeshRef = useRef<THREE.Mesh>(null!);
     const [meshData, setMeshData] = useState<MeshData | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -56,7 +60,7 @@ export default function GlassBrainViewer() {
                 console.error("Fetch error:", e);
                 setError(e.message);
             });
-    }, []);
+    }, [refreshTrigger]);
 
     const brainGeometry = useMemo(() => {
         if (!meshData) return null;
@@ -94,7 +98,7 @@ export default function GlassBrainViewer() {
           {brainGeometry && brainBounds && (
               <group rotation={[-Math.PI / 2, 0, 0]}>
                   <BrainMesh geometry={brainGeometry} position={brainBounds.center.clone().negate()} />
-                  <VolumeRenderer brainSize={brainBounds.size} />
+                  <VolumeRenderer brainSize={brainBounds.size} refreshTrigger={refreshTrigger} />
               </group>
           )}
           <OrbitControls

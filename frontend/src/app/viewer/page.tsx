@@ -33,6 +33,7 @@ export default function Viewer() {
   const [isMaskTypeChanging, setIsMaskTypeChanging] = useState<boolean>(false);
   const [isClient, setIsClient] = useState(false);
   const [iframeTranslateX, setIframeTranslateX] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -83,6 +84,9 @@ export default function Viewer() {
 
         const result = await response.json();
 
+        // Trigger refresh for both viewers
+        setRefreshTrigger(prev => prev + 1);
+        
         if (iframeRef.current) {
             iframeRef.current.contentWindow?.location.reload();
         }
@@ -100,6 +104,9 @@ export default function Viewer() {
       try {
         if (activeFilterId) {
           await handleFilterChange(activeFilterId, newMaskType);
+        } else {
+          // If no active filter, just trigger a refresh
+          setRefreshTrigger(prev => prev + 1);
         }
       } catch (error) {
         console.error("Error changing mask type:", error);
@@ -183,6 +190,7 @@ export default function Viewer() {
           <iframe
             ref={iframeRef}
             src="/api/viewer"
+            key={`${activeFilterId}-${activeMaskType}-${refreshTrigger}`}
             className="w-full h-full border-none transition-transform duration-300 ease-in-out"
             title="Brain Viewer"
             style={{ transform: `translateX(${iframeTranslateX}vw)` }}
@@ -192,7 +200,10 @@ export default function Viewer() {
             className="w-full h-full transition-transform duration-300 ease-in-out" 
             style={{ transform: `translateX(${iframeTranslateX}vw)` }}
           >
-            <GlassBrainViewer />
+            <GlassBrainViewer 
+              key={`${activeFilterId}-${activeMaskType}-${refreshTrigger}`}
+              refreshTrigger={refreshTrigger} 
+            />
           </div>
         )}
       </main>

@@ -93,9 +93,10 @@ interface VolumeData {
 
 interface VolumeRendererProps {
     brainSize: THREE.Vector3;
+    refreshTrigger?: number;
 }
 
-export default function VolumeRenderer({ brainSize }: VolumeRendererProps) {
+export default function VolumeRenderer({ brainSize, refreshTrigger = 0 }: VolumeRendererProps) {
     const [volumeData, setVolumeData] = useState<VolumeData | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -108,7 +109,7 @@ export default function VolumeRenderer({ brainSize }: VolumeRendererProps) {
             console.error("Fetch error:", e);
             setError(e.message);
         });
-    }, []);
+    }, [refreshTrigger]);
 
     const { texture, colormap, uniforms } = useMemo(() => {
         if (!volumeData) return { texture: null, colormap: null, uniforms: null };
