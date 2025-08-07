@@ -12,6 +12,7 @@ from app import app, db
 from models import Patients, TumorMask, NiftiData, DoseMask, MRIMask
 
 # Directory paths for Docker volumes - relative to the /app working directory
+# These will be overridden by environment variables when running in the app context
 INPUT_DIR = '/app/filestore/test_db_nifti'
 TUMOR_CACHE_DIR = '/app/filestore/tumor_mask_cache'
 MRI_CACHE_DIR = '/app/filestore/mri_mask_cache'
@@ -389,6 +390,30 @@ def get_filtered_dose_ids(criteria):
         print(f"Error in filtering dose masks: {e}")
         return []
 
+def get_filestore_paths():
+    """
+    Get filestore paths from app context or use defaults.
+    """
+    try:
+        from flask import current_app
+        filestore_path = current_app.config.get('FILESTORE_PATH', '/app/filestore')
+        return {
+            'input_dir': os.path.join(filestore_path, 'test_db_nifti'),
+            'tumor_cache_dir': os.path.join(filestore_path, 'tumor_mask_cache'),
+            'mri_cache_dir': os.path.join(filestore_path, 'mri_mask_cache'),
+            'dose_cache_dir': os.path.join(filestore_path, 'dose_mask_cache'),
+            'out_dir': os.path.join(filestore_path, 'nifti_display_cache')
+        }
+    except RuntimeError:
+        # Not in app context, use default paths
+        return {
+            'input_dir': INPUT_DIR,
+            'tumor_cache_dir': TUMOR_CACHE_DIR,
+            'mri_cache_dir': MRI_CACHE_DIR,
+            'dose_cache_dir': DOSE_CACHE_DIR,
+            'out_dir': OUT_DIR
+        }
+
 def generate_display_nifti(filter_id, criteria, mask_type='tumor'):
     """
     Generate a display NIfTI file by averaging all the mask NIfTI files
@@ -402,20 +427,23 @@ def generate_display_nifti(filter_id, criteria, mask_type='tumor'):
     Returns:
         str: Path to the generated NIfTI file
     """
+    # Get paths from app context or use defaults
+    paths = get_filestore_paths()
+    
     # Map mask types to cache directories and query functions
     mask_config = {
         'tumor': {
-            'cache_dir': TUMOR_CACHE_DIR,
+            'cache_dir': paths['tumor_cache_dir'],
             'query_func': get_filtered_tumor_ids,
             'description': 'tumor'
         },
         'mri': {
-            'cache_dir': MRI_CACHE_DIR,
+            'cache_dir': paths['mri_cache_dir'],
             'query_func': get_filtered_mri_ids,
             'description': 'MRI'
         },
         'dose': {
-            'cache_dir': DOSE_CACHE_DIR,
+            'cache_dir': paths['dose_cache_dir'],
             'query_func': get_filtered_dose_ids,
             'description': 'dose'
         }
@@ -452,7 +480,7 @@ def generate_display_nifti(filter_id, criteria, mask_type='tumor'):
     
     # Load and accumulate all the mask NIfTI volumes
     for i, mask_id in enumerate(id_list):
-        nifti_path = os.path.join(INPUT_DIR, f"{mask_id}.nii.gz")
+        nifti_path = os.path.join(paths['input_dir'], f"{mask_id}.nii.gz")
         
         if not os.path.exists(nifti_path):
             print(f"Warning: {description.title()} NIfTI file not found for ID {mask_id}")

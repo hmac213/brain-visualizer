@@ -59,8 +59,9 @@ def get_volume_data():
         current_mask_type = current_app.config.get('CURRENT_MASK_TYPE', 'tumor')
         cache_subdir = cache_subdirs.get(current_mask_type, 'tumor_mask_cache')
         
+        filestore_path = current_app.config['FILESTORE_PATH']
         nifti_file_path = os.path.join(
-            '/app/filestore', 
+            filestore_path, 
             cache_subdir,
             f"{current_filter_id}.nii.gz"
         )

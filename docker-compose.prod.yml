@@ -8,3 +8,5 @@ services:
     volumes:
       - ./backend/src/app/custom_templates:/app/custom_templates
       - /mnt/nifti_filestore:/app/filestore
+    environment:
+      - FILESTORE_PATH=/app/filestore

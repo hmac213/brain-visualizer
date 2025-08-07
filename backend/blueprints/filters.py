@@ -285,9 +285,10 @@ def modify_filter(id):
             current_mask_type = current_app.config.get('CURRENT_MASK_TYPE', 'tumor')
             
             # Remove all mask type cache files for this filter
+            filestore_path = current_app.config['FILESTORE_PATH']
             cache_dirs = ['tumor_mask_cache', 'mri_mask_cache', 'dose_mask_cache']
             for cache_dir in cache_dirs:
-                cache_path = os.path.join('/app/filestore', cache_dir, f"{id}.nii.gz")
+                cache_path = os.path.join(filestore_path, cache_dir, f"{id}.nii.gz")
                 if os.path.exists(cache_path):
                     os.remove(cache_path)
                     
@@ -314,9 +315,10 @@ def delete_filter(id):
         
         # Clean up associated NIfTI files from all mask type caches
         try:
+            filestore_path = current_app.config['FILESTORE_PATH']
             cache_dirs = ['tumor_mask_cache', 'mri_mask_cache', 'dose_mask_cache']
             for cache_dir in cache_dirs:
-                cache_path = os.path.join('/app/filestore', cache_dir, f"{id}.nii.gz")
+                cache_path = os.path.join(filestore_path, cache_dir, f"{id}.nii.gz")
                 if os.path.exists(cache_path):
                     os.remove(cache_path)
                     print(f"Removed cached NIfTI file: {cache_path}")
@@ -356,8 +358,9 @@ def set_current_filter(id):
                     'mri': 'mri_mask_cache', 
                     'dose': 'dose_mask_cache'
                 }
+                filestore_path = current_app.config['FILESTORE_PATH']
                 cache_subdir = cache_subdirs.get(mask_type, 'tumor_mask_cache')
-                cache_path = os.path.join('/app/filestore', cache_subdir, f"{id}.nii.gz")
+                cache_path = os.path.join(filestore_path, cache_subdir, f"{id}.nii.gz")
                 
                 print(f"Checking cache path: {cache_path}")
                 

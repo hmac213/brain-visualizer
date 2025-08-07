@@ -15,6 +15,9 @@ CORS(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
 
+# Configure filestore path from environment variable
+app.config['FILESTORE_PATH'] = os.environ.get('FILESTORE_PATH', '/app/filestore')
+
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 

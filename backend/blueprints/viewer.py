@@ -28,14 +28,15 @@ def req_visualize_brain(nifti_id_str=None, nifti_dir=None):
                 out_path = out_path.decode('utf-8')
             return send_from_directory(out_path, 'index.html') # already cached, so we return
 
+        filestore_path = current_app.config['FILESTORE_PATH']
         out_path = os.path.abspath(os.path.join(
-            '/app/filestore/viewer_cache',
+            filestore_path, 'viewer_cache',
             str(nifti_id_str),
         ))
         redis_cache.set_path(redis_key, out_path)
 
         nifti_file_path = os.path.join(
-            '/app/filestore',
+            filestore_path,
             nifti_dir,
             f'{nifti_id_str}.nii.gz'
         )
@@ -71,8 +72,9 @@ def req_visualize_brain(nifti_id_str=None, nifti_dir=None):
 
         cache_subdir = cache_subdirs.get(current_mask_type, 'tumor_mask_cache')
 
+        filestore_path = current_app.config['FILESTORE_PATH']
         out_path = os.path.abspath(os.path.join(
-            '/app/filestore/viewer_cache',
+            filestore_path, 'viewer_cache',
             current_filter_id,
             current_mask_type,
         ))
@@ -80,7 +82,7 @@ def req_visualize_brain(nifti_id_str=None, nifti_dir=None):
 
         # Use the Docker volume path for NIfTI files with mask type subdirectory
         nifti_file_path = os.path.join(
-            '/app/filestore', 
+            filestore_path, 
             cache_subdir,
             f"{current_filter_id}.nii.gz"
         )
@@ -97,7 +99,8 @@ def req_visualize_brain(nifti_id_str=None, nifti_dir=None):
         current_nii_volume_data = current_nii[0]
 
         # Use a shared directory for common files and session-specific for index.html
-        shared_out_path = '/app/filestore/viewer_cache/pycortex_shared'
+        filestore_path = current_app.config['FILESTORE_PATH']
+        shared_out_path = os.path.join(filestore_path, 'viewer_cache', 'pycortex_shared')
         session_out_path = out_path
         
         # Ensure both directories exist
@@ -126,7 +129,8 @@ def req_visualize_brain(nifti_id_str=None, nifti_dir=None):
 # serve files from shared pycortex directory (catches all resource requests)
 @viewer.route('/<path:file_path>')
 def serve_pycortex_shared_assets(file_path):
-    shared_directory = '/app/filestore/viewer_cache/pycortex_shared'
+    filestore_path = current_app.config['FILESTORE_PATH']
+    shared_directory = os.path.join(filestore_path, 'viewer_cache', 'pycortex_shared')
     
     # Split into directory and filename
     file_directory = os.path.dirname(file_path)
