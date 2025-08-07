@@ -2,3 +2,7 @@ services:
   backend:
     volumes:
       - ./filestore:/app/filestore
+
+  redis:
+    ports:
+      - "6379:6379"
