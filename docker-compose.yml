@@ -29,10 +29,6 @@ services:
       - "5001:5001"
     volumes:
       - ./frontend/src/app/custom_templates:/app/custom_templates
-      - ./filestore/test_db_nifti:/app/filestore/test_db_nifti
-      - ./filestore/tumor_mask_cache:/app/filestore/tumor_mask_cache
-      - ./filestore/mri_mask_cache:/app/filestore/mri_mask_cache
-      - ./filestore/dose_mask_cache:/app/filestore/dose_mask_cache
     networks:
       - app-network
 
