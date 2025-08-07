@@ -26,15 +26,6 @@ jobs:
             ./ \
             root@${{ secrets.DO_DEPLOY_HOST }}:${{ secrets.DO_DEPLOY_PATH }}/
 
-      - name: Upload .env to droplet
-        run: |
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
-            root@${{ secrets.DO_DEPLOY_HOST }} << 'EOF'
-cat > "${{ secrets.DO_DEPLOY_PATH }}/.env" << 'EOV'
-${{ secrets.PROD_ENV_FILE }}
-EOV
-EOF
-
       - name: Restart services on droplet
         run: |
           ssh -i ~/.ssh/id_ed25519 \
