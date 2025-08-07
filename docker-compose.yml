@@ -37,6 +37,8 @@ services:
 
   db:
     image: postgres
+    healthcheck:
+      disable: true
     restart: always
     environment:
       POSTGRES_USER: myuser
