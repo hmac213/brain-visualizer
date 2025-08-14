@@ -197,14 +197,12 @@ def get_filter_options_endpoint():
 def get_filter_statistics_endpoint(filter_id=None):
     """Get statistics for the current filter or a specific filter."""
     try:
-        # Get mask type from query parameter
-        mask_type = request.args.get('maskType', current_app.config.get('CURRENT_MASK_TYPE', 'tumor'))
-        
         if filter_id:
             # Get statistics for specific filter
             active_filters = get_default_filters() # Create a fresh copy for this request
             if filter_id in active_filters:
                 criteria = active_filters[filter_id]['criteria']
+                mask_type = request.args.get('maskType', 'tumor') # Default to tumor for now
                 stats = get_filter_statistics(criteria, mask_type)
                 stats['filter_id'] = filter_id
                 stats['filter_name'] = active_filters[filter_id]['name']
@@ -212,29 +210,19 @@ def get_filter_statistics_endpoint(filter_id=None):
             else:
                 return jsonify({'error': 'Filter not found'}), 404
         else:
-            # Get statistics for current filter
-            current_filter_config = current_app.config.get('CURRENT_FILTER', {})
-            current_mask_type = current_app.config.get('CURRENT_MASK_TYPE', 'tumor')
+            # Get mask type from query parameter, default to tumor if not specified
+            mask_type = request.args.get('maskType', 'tumor')
             
-            if current_filter_config:
-                filter_id = list(current_filter_config.keys())[0]
-                criteria = current_filter_config[filter_id]['criteria']
-                stats = get_filter_statistics(criteria, current_mask_type)
-                stats['filter_id'] = filter_id
-                stats['filter_name'] = current_filter_config[filter_id]['name']
-                return jsonify(stats)
-            else:
-                # No current filter, return empty statistics
-                return jsonify({
-                    'total_patients': 0,
-                    'total_tumors': 0,
-                    'total_mris': 0,
-                    'total_dose_masks': 0,
-                    'current_mask_type': current_mask_type,
-                    'current_mask_count': 0,
-                    'filter_id': None,
-                    'filter_name': 'No Filter Active'
-                })
+            # For now, return statistics for the default filter since we're not tracking per-user state yet
+            # This will be updated when we implement proper user sessions
+            default_filters = get_default_filters()
+            default_filter_id = 'default_id'
+            default_criteria = default_filters[default_filter_id]['criteria']
+            
+            stats = get_filter_statistics(default_criteria, mask_type)
+            stats['filter_id'] = default_filter_id
+            stats['filter_name'] = default_filters[default_filter_id]['name']
+            return jsonify(stats)
                 
     except Exception as e:
         print(f"Error getting filter statistics: {e}")
@@ -259,10 +247,10 @@ def create_filter():
     active_filters = get_default_filters() # Create a fresh copy for this request
     active_filters[id] = { 'name': name, 'criteria': criteria }
     
-    # Generate the NIfTI file using the new criteria format and current mask type
+    # Generate the NIfTI file using the new criteria format and mask type from query parameter
     try:
-        current_mask_type = current_app.config.get('CURRENT_MASK_TYPE', 'tumor')
-        result_path = generate_display_nifti(id, criteria, current_mask_type)
+        mask_type = request.args.get('maskType', 'tumor')  # Get from query parameter, default to tumor
+        result_path = generate_display_nifti(id, criteria, mask_type)
         
         if result_path:
             print(f"Successfully created NIfTI file at {result_path}")
@@ -285,9 +273,9 @@ def modify_filter(id):
     if id in active_filters:
         active_filters[id] = { 'name': name, 'criteria': criteria }
         
-        # Regenerate the NIfTI file with updated criteria and current mask type
+        # Regenerate the NIfTI file with updated criteria and mask type from query parameter
         try:
-            current_mask_type = current_app.config.get('CURRENT_MASK_TYPE', 'tumor')
+            mask_type = request.args.get('maskType', 'tumor')  # Get from query parameter, default to tumor
             
             # Remove all mask type cache files for this filter
             filestore_path = current_app.config['FILESTORE_PATH']
@@ -297,7 +285,7 @@ def modify_filter(id):
                 if os.path.exists(cache_path):
                     os.remove(cache_path)
                     
-            result_path = generate_display_nifti(id, criteria, current_mask_type)
+            result_path = generate_display_nifti(id, criteria, mask_type)
             
             if result_path:
                 print(f"Successfully updated NIfTI file at {result_path}")
@@ -344,16 +332,12 @@ def set_current_filter(id):
         
         active_filters = get_default_filters() # Create a fresh copy for this request
         if id in active_filters:
-            # Store current filter and mask type in Redis for this request
-            # This is temporary until we implement proper user sessions
-            redis_key_filter = f'current_filter:{id}'
-            redis_key_mask = f'current_mask_type:{id}'
+            # For now, just log the filter change since we're not tracking per-user state yet
+            # This will be updated when we implement proper user sessions
+            print(f"Filter {id} with mask type {mask_type} would be set as current (local only)")
             
-            from app import redis_cache
-            redis_cache.set_path(redis_key_filter, str(id))
-            redis_cache.set_path(redis_key_mask, mask_type)
-            
-            print(f"Updated current filter to {id} with mask type {mask_type}")
+            # Note: In a multi-user environment, this would store the filter per user
+            # For now, we just return success without affecting other users
             
             # Generate NIfTI file for this mask type if it doesn't exist
             try:

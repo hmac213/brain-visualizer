@@ -46,15 +46,17 @@ def req_visualize_brain(nifti_id_str=None, nifti_dir=None):
             from flask import abort
             abort(404)
             
-    else: # no nifti_id_str or nifti_dir, so we use the default filter and mask type
-        # For now, use default values since we're not tracking per-user state yet
+    else: # no nifti_id_str or nifti_dir, so we use the mask type from query parameter
+        # Get mask type from query parameter, default to tumor if not specified
+        mask_type = request.args.get('maskType', 'tumor')
+        
+        # For now, use default filter since we're not tracking per-user state yet
         # This will be updated when we implement proper user sessions
         current_filter_id = 'default_id'
-        current_mask_type = 'tumor'  # Default to tumor
         
-        current_app.logger.info(f"Using filter ID: {current_filter_id}, mask type: {current_mask_type}")
+        current_app.logger.info(f"Using filter ID: {current_filter_id}, mask type: {mask_type}")
 
-        redis_key = f'viewer_cache:{current_filter_id}_{current_mask_type}'
+        redis_key = f'viewer_cache:{current_filter_id}_{mask_type}'
         if redis_cache.path_exists(redis_key):
             out_path = redis_cache.get_path(redis_key)
             # Ensure out_path is a string, not bytes
@@ -69,13 +71,13 @@ def req_visualize_brain(nifti_id_str=None, nifti_dir=None):
             'dose': 'dose_mask_cache'
         }
 
-        cache_subdir = cache_subdirs.get(current_mask_type, 'tumor_mask_cache')
+        cache_subdir = cache_subdirs.get(mask_type, 'tumor_mask_cache')
 
         filestore_path = current_app.config['FILESTORE_PATH']
         out_path = os.path.abspath(os.path.join(
             filestore_path, 'viewer_cache',
             current_filter_id,
-            current_mask_type,
+            mask_type,
         ))
         redis_cache.set_path(redis_key, out_path)
 

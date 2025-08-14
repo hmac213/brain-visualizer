@@ -1,6 +1,6 @@
 import nibabel as nib
 import numpy as np
-from flask import Blueprint, jsonify, current_app
+from flask import Blueprint, jsonify, current_app, request
 import os
 from templateflow import api as tf
 
@@ -41,6 +41,9 @@ def get_brain_surface_mesh():
 def get_volume_data():
     """API endpoint to load a NIfTI volume and return its data and affine."""
     try:
+        # Get mask type from query parameter, default to tumor if not specified
+        mask_type = request.args.get('maskType', 'tumor')
+        
         # For now, use default filter since we're not tracking per-user state yet
         # This will be updated when we implement proper user sessions
         current_filter_id = 'default_id'
@@ -52,8 +55,7 @@ def get_volume_data():
             'dose': 'dose_mask_cache'
         }
         
-        current_mask_type = current_app.config.get('CURRENT_MASK_TYPE', 'tumor')
-        cache_subdir = cache_subdirs.get(current_mask_type, 'tumor_mask_cache')
+        cache_subdir = cache_subdirs.get(mask_type, 'tumor_mask_cache')
         
         filestore_path = current_app.config['FILESTORE_PATH']
         nifti_file_path = os.path.join(
