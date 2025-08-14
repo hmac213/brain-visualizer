@@ -3,6 +3,37 @@ from .chart_creators import chart_creation_map
 
 chart = Blueprint('chart', __name__, url_prefix='/api')
 
+def get_stored_charts():
+    """Get charts stored in Redis, fallback to default if none exist."""
+    try:
+        from app import redis_cache
+        # Try to get charts from Redis
+        charts_key = 'stored_charts'
+        stored_charts = redis_cache.get_path(charts_key)
+        
+        if stored_charts:
+            import json
+            # Handle Redis returning bytes
+            if isinstance(stored_charts, bytes):
+                stored_charts = stored_charts.decode('utf-8')
+            return json.loads(stored_charts)
+        else:
+            # Return default charts if none stored
+            return get_default_charts()
+    except Exception as e:
+        print(f"Error getting stored charts: {e}")
+        return get_default_charts()
+
+def store_charts(charts_dict):
+    """Store charts in Redis."""
+    try:
+        from app import redis_cache
+        import json
+        charts_key = 'stored_charts'
+        redis_cache.set_path(charts_key, json.dumps(charts_dict))
+    except Exception as e:
+        print(f"Error storing charts: {e}")
+
 def get_default_charts():
     """Create a fresh copy of default charts for each request."""
     return {
@@ -119,7 +150,7 @@ def get_brain_clicks():
 @chart.route('/charts', methods=['GET'])
 def get_charts():
     processed_charts = {}
-    active_charts_copy = get_default_charts() # Get a fresh copy for each request
+    active_charts_copy = get_stored_charts() # Get a fresh copy for each request
     for chart_id, chart_info in active_charts_copy.items():
         chart_type = chart_info.get('type')
         data_payload = chart_info.get('data')
@@ -154,12 +185,15 @@ def create_chart():
     title = request.json.get('title')
     
     # Store the chart definition
-    active_charts_copy = get_default_charts() # Get a fresh copy for each request
+    active_charts_copy = get_stored_charts() # Get charts from Redis
     active_charts_copy[id] = {
         'type': type,
         'title': title,
         'data': data
     }
+    
+    # Store the updated charts back to Redis
+    store_charts(active_charts_copy)
     
     # Generate chart configuration using the appropriate creator function
     return_chart = chart_creation_map[type](data)
@@ -173,7 +207,7 @@ def modify_chart(id):
     data = request.json.get('data')
     title = request.json.get('title') # Also get title for modification
 
-    active_charts_copy = get_default_charts() # Get a fresh copy for each request
+    active_charts_copy = get_stored_charts() # Get charts from Redis
     if id not in active_charts_copy:
         return jsonify({ 'error': 'invalid chart id' }), 404 # Use 404 for not found
     
@@ -194,6 +228,9 @@ def modify_chart(id):
 
         # We need to update active_charts with the NEW definition, not the config
         active_charts_copy[id] = {'type': type, 'title': title, 'data': data}
+        
+        # Store the updated charts back to Redis
+        store_charts(active_charts_copy)
 
         return jsonify(modified_chart_config) # Return the newly generated config
     except Exception as e:
@@ -203,9 +240,11 @@ def modify_chart(id):
 # delete chart
 @chart.route('/charts/<id>', methods=['DELETE']) # Ensure plural 'charts' for consistency
 def delete_chart(id):
-    active_charts_copy = get_default_charts() # Get a fresh copy for each request
+    active_charts_copy = get_stored_charts() # Get charts from Redis
     if id in active_charts_copy:
         del active_charts_copy[id]
+        # Store the updated charts back to Redis
+        store_charts(active_charts_copy)
         return jsonify({ 'message': 'chart successfully deleted' }), 200
     
     return jsonify({ 'error': 'no such chart exists' }), 404 # Use 404
