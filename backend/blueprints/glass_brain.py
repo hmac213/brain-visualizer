@@ -41,13 +41,9 @@ def get_brain_surface_mesh():
 def get_volume_data():
     """API endpoint to load a NIfTI volume and return its data and affine."""
     try:
-        current_filter = current_app.config.get('CURRENT_FILTER')
-        if not current_filter or not isinstance(current_filter, dict):
-            return jsonify({"error": "Current filter not set or invalid."}), 400
-        
-        current_filter_id = next(iter(current_filter), None)
-        if not current_filter_id:
-            return jsonify({"error": "No ID found in current filter."}), 400
+        # For now, use default filter since we're not tracking per-user state yet
+        # This will be updated when we implement proper user sessions
+        current_filter_id = 'default_id'
 
         # Map mask types to cache directories
         cache_subdirs = {

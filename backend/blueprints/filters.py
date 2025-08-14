@@ -9,13 +9,14 @@ from datetime import date
 
 filters = Blueprint('filters', __name__, url_prefix='/api')
 
-# initialize with a default filter
-active_filters = {
-    'default_id': {
-        'name': 'Default',
-        'criteria': {}
+def get_default_filters():
+    """Create a fresh copy of default filters for each request."""
+    return {
+        'default_id': {
+            'name': 'Default',
+            'criteria': {}
+        }
     }
-}
 
 def get_filter_options():
     """Generate filter options based on actual database data."""
@@ -201,6 +202,7 @@ def get_filter_statistics_endpoint(filter_id=None):
         
         if filter_id:
             # Get statistics for specific filter
+            active_filters = get_default_filters() # Create a fresh copy for this request
             if filter_id in active_filters:
                 criteria = active_filters[filter_id]['criteria']
                 stats = get_filter_statistics(criteria, mask_type)
@@ -211,15 +213,15 @@ def get_filter_statistics_endpoint(filter_id=None):
                 return jsonify({'error': 'Filter not found'}), 404
         else:
             # Get statistics for current filter
-            current_filter = current_app.config.get('CURRENT_FILTER', {})
+            current_filter_config = current_app.config.get('CURRENT_FILTER', {})
             current_mask_type = current_app.config.get('CURRENT_MASK_TYPE', 'tumor')
             
-            if current_filter:
-                filter_id = list(current_filter.keys())[0]
-                criteria = current_filter[filter_id]['criteria']
+            if current_filter_config:
+                filter_id = list(current_filter_config.keys())[0]
+                criteria = current_filter_config[filter_id]['criteria']
                 stats = get_filter_statistics(criteria, current_mask_type)
                 stats['filter_id'] = filter_id
-                stats['filter_name'] = current_filter[filter_id]['name']
+                stats['filter_name'] = current_filter_config[filter_id]['name']
                 return jsonify(stats)
             else:
                 # No current filter, return empty statistics
@@ -241,6 +243,7 @@ def get_filter_statistics_endpoint(filter_id=None):
 # get all active filters
 @filters.route('/filters', methods=['GET'])
 def get_filters():
+    active_filters = get_default_filters() # Create a fresh copy for this request
     return jsonify(active_filters)
 
 # create new filter
@@ -253,6 +256,7 @@ def create_filter():
     if not id or not name:
         return jsonify({ 'error': 'error: invalid filter' }), 400
 
+    active_filters = get_default_filters() # Create a fresh copy for this request
     active_filters[id] = { 'name': name, 'criteria': criteria }
     
     # Generate the NIfTI file using the new criteria format and current mask type
@@ -277,6 +281,7 @@ def modify_filter(id):
     name = request.json.get('name')
     criteria = request.json.get('criteria', {})
     
+    active_filters = get_default_filters() # Create a fresh copy for this request
     if id in active_filters:
         active_filters[id] = { 'name': name, 'criteria': criteria }
         
@@ -310,6 +315,7 @@ def modify_filter(id):
 # delete filter
 @filters.route('/filters/<id>', methods=['DELETE'])
 def delete_filter(id):
+    active_filters = get_default_filters() # Create a fresh copy for this request
     if id in active_filters:
         del active_filters[id]
         
@@ -336,19 +342,17 @@ def set_current_filter(id):
         mask_type = request.args.get('maskType', 'tumor')  # Default to tumor masks
         print(f"set_current_filter called with id: {id}, maskType: {mask_type}")
         
+        active_filters = get_default_filters() # Create a fresh copy for this request
         if id in active_filters:
-            current_filter_config = current_app.config.get('CURRENT_FILTER', {})
-            current_mask_type = current_app.config.get('CURRENT_MASK_TYPE')
+            # Store current filter and mask type in Redis for this request
+            # This is temporary until we implement proper user sessions
+            redis_key_filter = f'current_filter:{id}'
+            redis_key_mask = f'current_mask_type:{id}'
             
-            print(f"Current filter config: {current_filter_config}")
-            print(f"Current mask type: {current_mask_type}")
+            from app import redis_cache
+            redis_cache.set_path(redis_key_filter, str(id))
+            redis_cache.set_path(redis_key_mask, mask_type)
             
-            if id in current_filter_config and current_mask_type == mask_type:
-                print(f"Filter {id} with mask type {mask_type} already active")
-                return jsonify({ 'message': 'filter already active' }), 200
-            
-            current_app.config['CURRENT_FILTER'] = { id: active_filters[id] }
-            current_app.config['CURRENT_MASK_TYPE'] = mask_type
             print(f"Updated current filter to {id} with mask type {mask_type}")
             
             # Generate NIfTI file for this mask type if it doesn't exist
@@ -397,8 +401,7 @@ def set_current_filter(id):
 # get current filter
 @filters.route('/filters/get_current', methods=['GET'])
 def get_current_filter():
-    current_filter_data = current_app.config.get('CURRENT_FILTER')
-    if current_filter_data: 
-        return jsonify(current_filter_data), 200 
-    else:
-        return jsonify({ 'error': 'current filter not set' }), 404
+    # For now, return the default filter since we're not tracking per-user state yet
+    # This will be updated when we implement proper user sessions
+    default_filters = get_default_filters()
+    return jsonify(default_filters), 200

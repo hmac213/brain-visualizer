@@ -46,12 +46,11 @@ def req_visualize_brain(nifti_id_str=None, nifti_dir=None):
             from flask import abort
             abort(404)
             
-    else: # no nifti_id_str or nifti_dir, so we use the current filter and mask type
-        current_filter = current_app.config['CURRENT_FILTER']
-        current_mask_type = current_app.config.get('CURRENT_MASK_TYPE', 'tumor')  # Default to tumor
-        current_filter_id = ''
-        for id in current_filter:
-            current_filter_id = id
+    else: # no nifti_id_str or nifti_dir, so we use the default filter and mask type
+        # For now, use default values since we're not tracking per-user state yet
+        # This will be updated when we implement proper user sessions
+        current_filter_id = 'default_id'
+        current_mask_type = 'tumor'  # Default to tumor
         
         current_app.logger.info(f"Using filter ID: {current_filter_id}, mask type: {current_mask_type}")
 

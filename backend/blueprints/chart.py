@@ -3,120 +3,124 @@ from .chart_creators import chart_creation_map
 
 chart = Blueprint('chart', __name__, url_prefix='/api')
 
-active_charts = {
-    "1": {
-        'type': "line_chart",
-        'title': "Patient Data Over Time",
-        'data': {
-            'xaxis_title': "Time",
-            'yaxis_title': "Value",
-            'series': [
-                {
-                    'name': "Series 1",
-                    'mode': "lines",
-                    'trace': { 'x': [1, 2, 3], 'y': [10, 15, 20] },
-                    'traceType': "line_chart_trace"
-                }
-            ]
-        }
-    },
-    "2": {
-        'type': "bar_chart",
-        'title': "Patient Data Over Time",
-        'data': {
-            'xaxis_title': "Time",
-            'yaxis_title': "Value",
-            'series': [
-                {
-                    'name': "Series 1",
-                    'mode': "stack",
-                    'trace': { 'x': ['San Jose', 'San Francisco', 'Los Angeles'], 'y': [10, 15, 20] },
-                    'traceType': "bar_chart_trace"
-                }
-            ]
-        }
-    },
-    "3": {
-        'type': "scatter_plot",
-        'title': "Patient Measurements",
-        'data': {
-            'xaxis_title': "Height (cm)",
-            'yaxis_title': "Weight (kg)",
-            'series': [
-                {
-                    'name': "Patients",
-                    'mode': "markers",
-                    'trace': { 'x': [165, 170, 175, 180, 185], 'y': [65, 70, 75, 80, 85] },
-                    'traceType': "scatter_plot_trace"
-                }
-            ]
-        }
-    },
-    "4": {
-        'type': "histogram",
-        'title': "Age Distribution",
-        'data': {
-            'xaxis_title': "Age",
-            'yaxis_title': "Count",
-            'series': [
-                {
-                    'name': "Patient Ages",
-                    'trace': { 'x': [22, 25, 28, 30, 31, 32, 35, 38, 42, 45, 48, 50, 52, 55, 58, 60, 65, 70] },
-                    'traceType': "histogram_trace"
-                }
-            ]
-        }
-    },
-    "5": {
-        'type': "box_plot",
-        'title': "Blood Pressure Readings",
-        'data': {
-            'xaxis_title': "Patient Group",
-            'yaxis_title': "Blood Pressure",
-            'series': [
-                {
-                    'name': "Control Group",
-                    'trace': { 'y': [120, 118, 122, 125, 130, 128, 135, 132, 137, 140] },
-                    'traceType': "box_plot_trace"
-                },
-                {
-                    'name': "Test Group",
-                    'trace': { 'y': [115, 112, 118, 120, 125, 124, 130, 128, 132, 135] },
-                    'traceType': "box_plot_trace"
-                }
-            ]
-        }
-    },
-    "6": {
-        'type': "bubble_chart",
-        'title': "Patient Demographics",
-        'data': {
-            'xaxis_title': "Age",
-            'yaxis_title': "BMI",
-            'series': [
-                {
-                    'name': "Female Patients",
-                    'trace': { 
-                        'x': [25, 30, 35, 40, 45, 50], 
-                        'y': [21, 22, 23, 25, 26, 27],
-                        'size': [20, 40, 30, 50, 35, 25],
-                        'text': ["Patient A", "Patient B", "Patient C", "Patient D", "Patient E", "Patient F"]
+def get_default_charts():
+    """Create a fresh copy of default charts for each request."""
+    return {
+        "1": {
+            'type': "line_chart",
+            'title': "Patient Data Over Time",
+            'data': {
+                'xaxis_title': "Time",
+                'yaxis_title': "Value",
+                'series': [
+                    {
+                        'name': "Series 1",
+                        'mode': "lines",
+                        'trace': { 'x': [1, 2, 3], 'y': [10, 15, 20] },
+                        'traceType': "line_chart_trace"
+                    }
+                ]
+            }
+        },
+        "2": {
+            'type': "bar_chart",
+            'title': "Patient Data Over Time",
+            'data': {
+                'xaxis_title': "Time",
+                'yaxis_title': "Value",
+                'series': [
+                    {
+                        'name': "Series 1",
+                        'mode': "stack",
+                        'trace': { 'x': ['San Jose', 'San Francisco', 'Los Angeles'], 'y': [10, 15, 20] },
+                        'traceType': "bar_chart_trace"
+                    }
+                ]
+            }
+        },
+        "3": {
+            'type': "scatter_plot",
+            'title': "Patient Measurements",
+            'data': {
+                'xaxis_title': "Height (cm)",
+                'yaxis_title': "Weight (kg)",
+                'series': [
+                    {
+                        'name': "Patients",
+                        'mode': "markers",
+                        'trace': { 'x': [165, 170, 175, 180, 185], 'y': [65, 70, 75, 80, 85] },
+                        'traceType': "scatter_plot_trace"
+                    }
+                ]
+            }
+        },
+        "4": {
+            'type': "histogram",
+            'title': "Age Distribution",
+            'data': {
+                'xaxis_title': "Age",
+                'yaxis_title': "Count",
+                'series': [
+                    {
+                        'name': "Patient Ages",
+                        'trace': { 'x': [22, 25, 28, 30, 31, 32, 35, 38, 42, 45, 48, 50, 52, 55, 58, 60, 65, 70] },
+                        'traceType': "histogram_trace"
+                    }
+                ]
+            }
+        },
+        "5": {
+            'type': "box_plot",
+            'title': "Blood Pressure Readings",
+            'data': {
+                'xaxis_title': "Patient Group",
+                'yaxis_title': "Blood Pressure",
+                'series': [
+                    {
+                        'name': "Control Group",
+                        'trace': { 'y': [120, 118, 122, 125, 130, 128, 135, 132, 137, 140] },
+                        'traceType': "box_plot_trace"
                     },
-                    'traceType': "bubble_chart_trace"
-                }
-            ]
+                    {
+                        'name': "Test Group",
+                        'trace': { 'y': [115, 112, 118, 120, 125, 124, 130, 128, 132, 135] },
+                        'traceType': "box_plot_trace"
+                    }
+                ]
+            }
+        },
+        "6": {
+            'type': "bubble_chart",
+            'title': "Patient Demographics",
+            'data': {
+                'xaxis_title': "Age",
+                'yaxis_title': "BMI",
+                'series': [
+                    {
+                        'name': "Female Patients",
+                        'trace': { 
+                            'x': [25, 30, 35, 40, 45, 50], 
+                            'y': [21, 22, 23, 25, 26, 27],
+                            'size': [20, 40, 30, 50, 35, 25],
+                            'text': ["Patient A", "Patient B", "Patient C", "Patient D", "Patient E", "Patient F"]
+                        },
+                        'traceType': "bubble_chart_trace"
+                    }
+                ]
+            }
         }
     }
-}
 
-# Store brain location clicks
-brain_clicks = []
+def get_brain_clicks():
+    """Create a fresh copy of brain clicks for each request."""
+    return []
 
 # access all active charts
 @chart.route('/charts', methods=['GET'])
 def get_charts():
     processed_charts = {}
-    for chart_id, chart_info in active_charts.items():
+    active_charts_copy = get_default_charts() # Get a fresh copy for each request
+    for chart_id, chart_info in active_charts_copy.items():
         chart_type = chart_info.get('type')
         data_payload = chart_info.get('data')
         title = chart_info.get('title')
@@ -150,7 +154,8 @@ def create_chart():
     title = request.json.get('title')
     
     # Store the chart definition
-    active_charts[id] = {
+    active_charts_copy = get_default_charts() # Get a fresh copy for each request
+    active_charts_copy[id] = {
         'type': type,
         'title': title,
         'data': data
@@ -168,7 +173,8 @@ def modify_chart(id):
     data = request.json.get('data')
     title = request.json.get('title') # Also get title for modification
 
-    if id not in active_charts:
+    active_charts_copy = get_default_charts() # Get a fresh copy for each request
+    if id not in active_charts_copy:
         return jsonify({ 'error': 'invalid chart id' }), 404 # Use 404 for not found
     
     if not type or type not in chart_creation_map:
@@ -187,7 +193,7 @@ def modify_chart(id):
             return modified_chart_config # Return the error response directly
 
         # We need to update active_charts with the NEW definition, not the config
-        active_charts[id] = {'type': type, 'title': title, 'data': data}
+        active_charts_copy[id] = {'type': type, 'title': title, 'data': data}
 
         return jsonify(modified_chart_config) # Return the newly generated config
     except Exception as e:
@@ -197,8 +203,9 @@ def modify_chart(id):
 # delete chart
 @chart.route('/charts/<id>', methods=['DELETE']) # Ensure plural 'charts' for consistency
 def delete_chart(id):
-    if id in active_charts:
-        del active_charts[id]
+    active_charts_copy = get_default_charts() # Get a fresh copy for each request
+    if id in active_charts_copy:
+        del active_charts_copy[id]
         return jsonify({ 'message': 'chart successfully deleted' }), 200
     
     return jsonify({ 'error': 'no such chart exists' }), 404 # Use 404

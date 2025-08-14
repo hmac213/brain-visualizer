@@ -27,13 +27,14 @@ import models
 def home():
     return { "message" : "Flask backend is running!" }
 
-app.config['CURRENT_FILTER'] = {
-    'default_id': {
-        'name': 'Default',
-        'criteria': {}
-    }
-}
-app.config['CURRENT_MASK_TYPE'] = 'tumor'  # Default mask type
+# Remove global state - will be managed locally per request
+# app.config['CURRENT_FILTER'] = {
+#     'default_id': {
+#         'name': 'Default',
+#         'criteria': {}
+#     }
+# }
+# app.config['CURRENT_MASK_TYPE'] = 'tumor'  # Default mask type
 
 from blueprints.viewer import viewer
 from blueprints.filters import filters
