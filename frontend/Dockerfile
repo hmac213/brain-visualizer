@@ -4,7 +4,7 @@ WORKDIR /src
 
 # Install dependencies first (better caching)
 COPY package.json package-lock.json ./
-RUN npm ci --only=production
+RUN npm ci  # Install ALL dependencies including devDependencies for build
 
 # Copy the rest of the application
 COPY . .
