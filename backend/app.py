@@ -40,6 +40,20 @@ def before_request():
         session['user_id'] = str(uuid.uuid4())
         app.logger.info(f"Generated new user ID: {session['user_id']}")
 
+@app.before_first_request
+def before_first_request():
+    """Handle any startup tasks that need to happen before the first request."""
+    try:
+        # Ensure pycortex config directory exists
+        import os
+        pycortex_dir = os.path.expanduser('~/.config/pycortex')
+        if not os.path.exists(pycortex_dir):
+            os.makedirs(pycortex_dir, exist_ok=True)
+            app.logger.info(f"Created pycortex config directory: {pycortex_dir}")
+    except Exception as e:
+        app.logger.warning(f"Could not create pycortex directory: {e}")
+        # This is not critical for basic functionality
+
 @app.route('/', methods=['GET'])
 def home():
     return { "message" : "Flask backend is running!" }

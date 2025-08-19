@@ -1,5 +1,6 @@
 from flask import current_app, request, jsonify
-from patches import template_patch
+# Remove immediate import to prevent pycortex startup issues
+# from patches import template_patch
 from db_loading.nifti_loading import load_nifti
 from flask import Blueprint, send_from_directory
 import cortex
