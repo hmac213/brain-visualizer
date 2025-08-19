@@ -1,8 +1,21 @@
 services:
-  backend:
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
     volumes:
-      - ./filestore:/app/filestore
+      - ./frontend:/src
+      - frontend_node_modules:/src/node_modules
+      - frontend_next_cache:/src/.next
+    environment:
+      - NODE_ENV=development
+    command: ["npm", "run", "dev"]
 
-  redis:
-    ports:
-      - "6379:6379"
+  backend:
+    build:
+      context: ./backend
+    command: ["flask", "--app", "app:app", "run", "--host=0.0.0.0", "--port=5001"]
+
+volumes:
+  frontend_node_modules:
+  frontend_next_cache:

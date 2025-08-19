@@ -3,9 +3,6 @@ services:
     build:
       context: ./frontend
       target: runner
-    volumes:
-      - frontend_node_modules:/src/node_modules
-      - frontend_next_cache:/src/.next
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
@@ -14,6 +11,7 @@ services:
   backend:
     build:
       context: ./backend
+      target: builder
     volumes:
       - ./frontend/src/app/custom_templates:/app/custom_templates
       - /root/mnt/nifti_filestore:/app/filestore
@@ -38,7 +36,3 @@ services:
 networks:
   default:
     name: app-network
-
-volumes:
-  frontend_node_modules:
-  frontend_next_cache:

@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
   eslint: {
     // Don't fail builds on ESLint errors
     ignoreDuringBuilds: true,

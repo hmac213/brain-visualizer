@@ -1,4 +1,25 @@
-FROM python:3.12
+FROM python:3.12 AS dev
+
+WORKDIR /app
+
+COPY ./requirements.txt .
+
+RUN pip install -r requirements.txt
+
+# Create pycortex config directory to prevent startup errors
+RUN mkdir -p /root/.config/pycortex
+
+COPY . .
+
+EXPOSE 5001
+
+# Set the template path environment variable
+ENV CUSTOM_TEMPLATES_PATH=/app/custom_templates
+
+# Use Flask development server for development
+CMD ["flask", "--app", "app:app", "run", "--host=0.0.0.0", "--port=5001"]
+
+FROM python:3.12 AS builder
 
 WORKDIR /app
 
