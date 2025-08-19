@@ -5,7 +5,7 @@ A full‑stack application for visualizing synthetic brain tumor data. This proj
 * **Database**: PostgreSQL (Docker Compose)
 * **Backend**: Flask + SQLAlchemy + Alembic migrations
 * **Frontend**: Next.js (React) UI
-* **Data Generators**: Python scripts to populate sample tabular data (`sample_data`) and generate synthetic NIfTI files (`.nii.gz`) with tumor “hotspots”
+* **Data Generators**: Python scripts to populate sample data (`sample_data`) and generate synthetic NIfTI files (`.nii.gz`) with tumor “hotspots”
 
 ---
 
