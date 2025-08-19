@@ -1,7 +1,8 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, session
 from flask_cors import CORS
 import os
 import json
+import uuid
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from redis_cache import RedisCache
@@ -11,7 +12,10 @@ redis_cache = RedisCache()
 
 app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
-CORS(app)
+CORS(app, supports_credentials=True)  # Enable credentials for session cookies
+
+# Configure session secret key
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
 
@@ -22,6 +26,13 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 import models
+
+@app.before_request
+def before_request():
+    """Ensure each user has a unique ID for session management."""
+    if 'user_id' not in session:
+        session['user_id'] = str(uuid.uuid4())
+        app.logger.info(f"Generated new user ID: {session['user_id']}")
 
 @app.route('/', methods=['GET'])
 def home():

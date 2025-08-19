@@ -71,7 +71,8 @@ export default function NewChartModal({ isOpen, onClose, onChartCreated }: NewCh
         method: 'GET',
         headers: {
           'Accept': 'application/json'
-        }
+        },
+        credentials: 'include'  // Include session cookies
       })
       .then(response => response.json())
       .then(data => {

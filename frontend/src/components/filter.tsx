@@ -114,7 +114,8 @@ export default function Filter(props: FilterProps) {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
-      }
+      },
+      credentials: 'include'  // Include session cookies
     })
     .then(response => response.json())
     .then(data => {
@@ -149,7 +150,8 @@ export default function Filter(props: FilterProps) {
           method: 'DELETE',
           headers: {
             'Accept': 'application/json'
-          }
+          },
+          credentials: 'include'  // Include session cookies
         });
         
         if (response.ok) {
@@ -268,7 +270,8 @@ export default function Filter(props: FilterProps) {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
-      }
+      },
+      credentials: 'include'  // Include session cookies
     })
     .then(response => response.json())
     .then(data => {
@@ -300,7 +303,9 @@ export default function Filter(props: FilterProps) {
   const fetchFilterStatistics = async (filterId: string, criteria: FilterCriteria) => {
     setModalStatsLoading(true);
     try {
-      const response = await fetch(`/api/filter-statistics/${filterId}?maskType=${props.activeMaskType}`);
+      const response = await fetch(`/api/filter-statistics/${filterId}?maskType=${props.activeMaskType}`, {
+        credentials: 'include'  // Include session cookies
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -720,6 +725,7 @@ export default function Filter(props: FilterProps) {
                           'Content-Type': 'application/json',
                           'Accept': 'application/json'
                         },
+                        credentials: 'include',  // Include session cookies
                         body: JSON.stringify(newFilter)
                       })
                       .then(response => response.json())
@@ -789,6 +795,7 @@ export default function Filter(props: FilterProps) {
                           'Content-Type': 'application/json',
                           'Accept': 'application/json'
                         },
+                        credentials: 'include',  // Include session cookies
                         body: JSON.stringify({
                           name: editFilterName,
                           criteria: editFilterCriteria

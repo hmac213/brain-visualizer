@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, current_app
+from flask import Blueprint, jsonify, request, current_app, session
 import os
 import sys
 from db_loading.generate_display_nifti import generate_display_nifti, get_filtered_tumor_ids, get_filtered_mri_ids, get_filtered_dose_ids
@@ -8,6 +8,15 @@ from sqlalchemy import distinct
 from datetime import date
 
 filters = Blueprint('filters', __name__, url_prefix='/api')
+
+def get_user_id():
+    """Get the current user's ID from the session."""
+    return session.get('user_id', 'anonymous')
+
+def get_user_filters_key():
+    """Get the Redis key for the current user's filters."""
+    user_id = get_user_id()
+    return f'stored_filters:{user_id}'
 
 def get_default_filters():
     """Create a fresh copy of default filters for each request."""
@@ -19,11 +28,11 @@ def get_default_filters():
     }
 
 def get_stored_filters():
-    """Get filters stored in Redis, fallback to default if none exist."""
+    """Get filters stored in Redis for the current user, fallback to default if none exist."""
     try:
         from app import redis_cache
-        # Try to get filters from Redis
-        filters_key = 'stored_filters'
+        # Try to get filters from Redis for the current user
+        filters_key = get_user_filters_key()
         stored_filters = redis_cache.get_path(filters_key)
         
         if stored_filters:
@@ -33,21 +42,21 @@ def get_stored_filters():
                 stored_filters = stored_filters.decode('utf-8')
             return json.loads(stored_filters)
         else:
-            # Return default filters if none stored
+            # Return default filters if none stored for this user
             return get_default_filters()
     except Exception as e:
-        print(f"Error getting stored filters: {e}")
+        print(f"Error getting stored filters for user {get_user_id()}: {e}")
         return get_default_filters()
 
 def store_filters(filters_dict):
-    """Store filters in Redis."""
+    """Store filters in Redis for the current user."""
     try:
         from app import redis_cache
         import json
-        filters_key = 'stored_filters'
+        filters_key = get_user_filters_key()
         redis_cache.set_path(filters_key, json.dumps(filters_dict))
     except Exception as e:
-        print(f"Error storing filters: {e}")
+        print(f"Error storing filters for user {get_user_id()}: {e}")
 
 def get_filter_options():
     """Generate filter options based on actual database data."""
@@ -244,9 +253,8 @@ def get_filter_statistics_endpoint(filter_id=None):
             # Get mask type from query parameter, default to tumor if not specified
             mask_type = request.args.get('maskType', 'tumor')
             
-            # For now, return statistics for the default filter since we're not tracking per-user state yet
-            # This will be updated when we implement proper user sessions
-            default_filters = get_stored_filters() # Get filters from Redis
+            # Return statistics for the default filter for the current user
+            default_filters = get_stored_filters() # Get filters from Redis for current user
             default_filter_id = 'default_id'
             default_criteria = default_filters[default_filter_id]['criteria']
             
@@ -256,7 +264,7 @@ def get_filter_statistics_endpoint(filter_id=None):
             return jsonify(stats)
                 
     except Exception as e:
-        print(f"Error getting filter statistics: {e}")
+        print(f"Error getting filter statistics for user {get_user_id()}: {e}")
         return jsonify({'error': f'Failed to get statistics: {str(e)}'}), 500
 
 # get all active filters
@@ -368,12 +376,12 @@ def set_current_filter(id):
         mask_type = request.args.get('maskType', 'tumor')  # Default to tumor masks
         print(f"set_current_filter called with id: {id}, maskType: {mask_type}")
         
-        # For now, accept any filter ID since we're not tracking per-user state yet
-        # This will be updated when we implement proper user sessions
-        print(f"Filter {id} with mask type {mask_type} would be set as current (local only)")
+        # Validate that the filter exists for the current user
+        active_filters = get_stored_filters()
+        if id not in active_filters:
+            return jsonify({'error': 'Filter not found for current user'}), 404
         
-        # Note: In a multi-user environment, this would validate the filter exists per user
-        # For now, we just proceed with the request
+        print(f"Filter {id} with mask type {mask_type} set as current for user {get_user_id()}")
         
         # Generate NIfTI file for this mask type if it doesn't exist
         try:
@@ -413,7 +421,6 @@ def set_current_filter(id):
 # get current filter
 @filters.route('/filters/get_current', methods=['GET'])
 def get_current_filter():
-    # For now, return the default filter since we're not tracking per-user state yet
-    # This will be updated when we implement proper user sessions
-    default_filters = get_stored_filters() # Get filters from Redis
+    # Return the default filter for the current user
+    default_filters = get_stored_filters() # Get filters from Redis for current user
     return jsonify(default_filters), 200

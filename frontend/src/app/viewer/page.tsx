@@ -45,7 +45,9 @@ export default function Viewer() {
   }, []);
 
   useEffect(() => {
-    fetch(`/api/filters/get_current`)
+    fetch(`/api/filters/get_current`, {
+      credentials: 'include'  // Include session cookies
+    })
       .then(response => response.json())
       .then(data => {
         if (data && Object.keys(data).length > 0) {
@@ -74,7 +76,8 @@ export default function Viewer() {
             method: 'PUT',
             headers: {
                 'Accept': 'application/json'
-            }
+            },
+            credentials: 'include'  // Include session cookies
         });
 
         if (!response.ok) {
