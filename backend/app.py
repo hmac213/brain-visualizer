@@ -18,7 +18,7 @@ CORS(app, supports_credentials=True)  # Enable credentials for session cookies
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 # Configure database URL with fallback
-database_url = os.environ.get('DATABASE_URL', 'postgresql://myuser:mypassword@db:5432/brain_prod')
+database_url = os.environ.get('DATABASE_URL', 'postgresql://myuser:mypassword@db:5432/brain_dev')
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 
 # Configure filestore path from environment variable
@@ -33,26 +33,33 @@ migrate = Migrate(app, db)
 
 import models
 
+# Flag to track if startup tasks have been completed
+_startup_completed = False
+
 @app.before_request
 def before_request():
-    """Ensure each user has a unique ID for session management."""
+    """Ensure each user has a unique ID for session management and handle startup tasks."""
+    global _startup_completed
+    
+    # Handle startup tasks only once
+    if not _startup_completed:
+        try:
+            # Ensure pycortex config directory exists
+            import os
+            pycortex_dir = os.path.expanduser('~/.config/pycortex')
+            if not os.path.exists(pycortex_dir):
+                os.makedirs(pycortex_dir, exist_ok=True)
+                app.logger.info(f"Created pycortex config directory: {pycortex_dir}")
+        except Exception as e:
+            app.logger.warning(f"Could not create pycortex directory: {e}")
+            # This is not critical for basic functionality
+        
+        _startup_completed = True
+    
+    # Ensure each user has a unique ID for session management
     if 'user_id' not in session:
         session['user_id'] = str(uuid.uuid4())
         app.logger.info(f"Generated new user ID: {session['user_id']}")
-
-@app.before_first_request
-def before_first_request():
-    """Handle any startup tasks that need to happen before the first request."""
-    try:
-        # Ensure pycortex config directory exists
-        import os
-        pycortex_dir = os.path.expanduser('~/.config/pycortex')
-        if not os.path.exists(pycortex_dir):
-            os.makedirs(pycortex_dir, exist_ok=True)
-            app.logger.info(f"Created pycortex config directory: {pycortex_dir}")
-    except Exception as e:
-        app.logger.warning(f"Could not create pycortex directory: {e}")
-        # This is not critical for basic functionality
 
 @app.route('/', methods=['GET'])
 def home():
