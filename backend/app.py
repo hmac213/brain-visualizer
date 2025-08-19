@@ -17,10 +17,16 @@ CORS(app, supports_credentials=True)  # Enable credentials for session cookies
 # Configure session secret key
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
+# Configure database URL with fallback
+database_url = os.environ.get('DATABASE_URL', 'postgresql://myuser:mypassword@db:5432/brain_prod')
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 
 # Configure filestore path from environment variable
 app.config['FILESTORE_PATH'] = os.environ.get('FILESTORE_PATH', '/app/filestore')
+
+# Log configuration (without sensitive data)
+app.logger.info(f"Database URL: {database_url.split('@')[1] if '@' in database_url else 'Invalid format'}")
+app.logger.info(f"Filestore path: {app.config['FILESTORE_PATH']}")
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -37,6 +43,31 @@ def before_request():
 @app.route('/', methods=['GET'])
 def home():
     return { "message" : "Flask backend is running!" }
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for monitoring."""
+    try:
+        # Test database connection
+        db.session.execute('SELECT 1')
+        db_status = 'healthy'
+    except Exception as e:
+        db_status = f'unhealthy: {str(e)}'
+    
+    try:
+        # Test Redis connection
+        from app import redis_cache
+        redis_cache.r.ping()
+        redis_status = 'healthy'
+    except Exception as e:
+        redis_status = f'unhealthy: {str(e)}'
+    
+    return {
+        'status': 'healthy',
+        'database': db_status,
+        'redis': redis_status,
+        'filestore_path': app.config['FILESTORE_PATH']
+    }
 
 # Remove global state - will be managed locally per request
 # app.config['CURRENT_FILTER'] = {

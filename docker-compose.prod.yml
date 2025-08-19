@@ -20,16 +20,25 @@ services:
     environment:
       - FILESTORE_PATH=/app/filestore
       - FLASK_ENV=production
-      - SECRET_KEY=${SECRET_KEY}
-      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY:-your-super-secret-production-key-change-this-immediately}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://myuser:mypassword@db:5432/brain_dev}
     restart: unless-stopped
-
-  db:
-    environment:
-      POSTGRES_DB: brain_prod
-    restart: unless-stopped
-    volumes:
-      - db_data:/var/lib/postgresql/data
+    depends_on:
+      - redis
 
   redis:
+    image: redis:7-alpine
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  default:
+    name: app-network
+
+volumes:
+  frontend_node_modules:
+  frontend_next_cache:

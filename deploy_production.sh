@@ -28,6 +28,17 @@ if [ -z "$SECRET_KEY" ] || [ "$SECRET_KEY" = "your-super-secret-production-key-c
     exit 1
 fi
 
+if [ -z "$DATABASE_URL" ]; then
+    echo "⚠️  Warning: DATABASE_URL not set, using default"
+    export DATABASE_URL="postgresql://myuser:mypassword@db:5432/brain_dev"
+fi
+
+# Display environment variables (without sensitive data)
+echo "🔧 Environment check:"
+echo "   - SECRET_KEY: ${SECRET_KEY:0:10}..."
+echo "   - DATABASE_URL: ${DATABASE_URL}"
+echo "   - FILESTORE_PATH: ${FILESTORE_PATH:-/app/filestore}"
+
 # Stop existing services
 echo "🛑 Stopping existing services..."
 docker compose -f docker-compose.yml -f docker-compose.prod.yml down || true
@@ -42,7 +53,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 # Wait for services to be ready
 echo "⏳ Waiting for services to be ready..."
-sleep 10
+sleep 15
 
 # Check service health
 echo "🏥 Checking service health..."
@@ -53,6 +64,10 @@ if docker compose -f docker-compose.yml -f docker-compose.prod.yml ps | grep -q 
     echo "✅ Services are running successfully!"
     echo "🌐 Frontend should be available at: http://your-droplet-ip:3000"
     echo "🔧 Backend should be available at: http://your-droplet-ip:5001"
+    
+    # Check backend logs for any errors
+    echo "📋 Checking backend logs..."
+    docker compose -f docker-compose.yml -f docker-compose.prod.yml logs backend --tail=20
 else
     echo "❌ Some services failed to start. Check logs with:"
     echo "   docker compose -f docker-compose.yml -f docker-compose.prod.yml logs"
