@@ -3,6 +3,7 @@ from flask_cors import CORS
 import os
 import json
 import uuid
+import threading
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from redis_cache import RedisCache
@@ -33,7 +34,10 @@ migrate = Migrate(app, db)
 
 import models
 
-# Flag to track if startup tasks have been completed
+# Thread-safe startup management
+# Using a lock to prevent race conditions when multiple requests
+# simultaneously try to execute startup tasks
+_startup_lock = threading.Lock()
 _startup_completed = False
 
 @app.before_request
@@ -41,20 +45,26 @@ def before_request():
     """Ensure each user has a unique ID for session management and handle startup tasks."""
     global _startup_completed
     
-    # Handle startup tasks only once
+    # Handle startup tasks only once using thread-safe double-check pattern
     if not _startup_completed:
-        try:
-            # Ensure pycortex config directory exists
-            import os
-            pycortex_dir = os.path.expanduser('~/.config/pycortex')
-            if not os.path.exists(pycortex_dir):
-                os.makedirs(pycortex_dir, exist_ok=True)
-                app.logger.info(f"Created pycortex config directory: {pycortex_dir}")
-        except Exception as e:
-            app.logger.warning(f"Could not create pycortex directory: {e}")
-            # This is not critical for basic functionality
-        
-        _startup_completed = True
+        with _startup_lock:
+            # Double-check pattern to prevent race conditions
+            if not _startup_completed:
+                try:
+                    # Ensure pycortex config directory exists
+                    import os
+                    pycortex_dir = os.path.expanduser('~/.config/pycortex')
+                    if not os.path.exists(pycortex_dir):
+                        os.makedirs(pycortex_dir, exist_ok=True)
+                        app.logger.info(f"Created pycortex config directory: {pycortex_dir}")
+                    else:
+                        app.logger.debug(f"Pycortex config directory already exists: {pycortex_dir}")
+                except Exception as e:
+                    app.logger.warning(f"Could not create pycortex directory: {e}")
+                    # This is not critical for basic functionality
+                
+                _startup_completed = True
+                app.logger.info("Startup tasks completed successfully")
     
     # Ensure each user has a unique ID for session management
     if 'user_id' not in session:
