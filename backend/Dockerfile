@@ -13,5 +13,8 @@ EXPOSE 5001
 # Set the template path environment variable
 ENV CUSTOM_TEMPLATES_PATH=/app/custom_templates
 
-# Use flask run command
-CMD ["flask", "--app", "app:app", "run", "--host=0.0.0.0", "--port=5001"]
+# Install Gunicorn for production WSGI server
+RUN pip install gunicorn
+
+# Use Gunicorn for production instead of Flask development server
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "4", "--timeout", "120", "--keep-alive", "2", "app:app"]

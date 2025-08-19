@@ -1,4 +1,4 @@
-name: Deploy to DigitalOcean via rsync
+name: Deploy to DigitalOcean Production
 
 on:
   push:
@@ -26,15 +26,28 @@ jobs:
             ./ \
             root@${{ secrets.DO_DEPLOY_HOST }}:${{ secrets.DO_DEPLOY_PATH }}/
 
-      - name: Restart services on droplet
+      - name: Set production environment variables
         run: |
           ssh -i ~/.ssh/id_ed25519 \
               -o StrictHostKeyChecking=no \
               root@${{ secrets.DO_DEPLOY_HOST }} \
           "cd ${{ secrets.DO_DEPLOY_PATH }} && \
-          docker compose -f docker-compose.yml \
-                         -f docker-compose.prod.yml \
-                         pull 2>/dev/null || true && \
-          docker compose -f docker-compose.yml \
-                         -f docker-compose.prod.yml \
-                         up -d --build"
+          echo 'SECRET_KEY=${{ secrets.PROD_SECRET_KEY }}' >> env.production && \
+          echo 'DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}' >> env.production"
+
+      - name: Deploy to production
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+              -o StrictHostKeyChecking=no \
+              root@${{ secrets.DO_DEPLOY_HOST }} \
+          "cd ${{ secrets.DO_DEPLOY_PATH }} && \
+          chmod +x deploy_production.sh && \
+          ./deploy_production.sh"
+
+      - name: Verify deployment
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+              -o StrictHostKeyChecking=no \
+              root@${{ secrets.DO_DEPLOY_HOST }} \
+          "cd ${{ secrets.DO_DEPLOY_PATH }} && \
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml ps"

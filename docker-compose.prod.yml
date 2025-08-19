@@ -1,12 +1,35 @@
 services:
   frontend:
+    build:
+      context: ./frontend
+      target: runner
     volumes:
       - frontend_node_modules:/src/node_modules
       - frontend_next_cache:/src/.next
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    restart: unless-stopped
 
   backend:
+    build:
+      context: ./backend
     volumes:
       - ./frontend/src/app/custom_templates:/app/custom_templates
       - /root/mnt/nifti_filestore:/app/filestore
     environment:
       - FILESTORE_PATH=/app/filestore
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+    restart: unless-stopped
+
+  db:
+    environment:
+      POSTGRES_DB: brain_prod
+    restart: unless-stopped
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    restart: unless-stopped
